@@ -1,24 +1,27 @@
 const express = require('express');
 const { sequelize } = require('./models');
 require('dotenv').config();
-
+const cors = require('cors');
 
 const foodTruckRoutes = require('./routes/foodTruckRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors({ origin: process.env.CORS_ORIGIN }));
+
 app.use(express.json());
 
-
 app.use('/api/v1/food-trucks', foodTruckRoutes);
+app.use('/api/v1/auth', authRoutes); 
 
 app.get('/', (req, res) => {
   res.send('¡Servidor del Food Truck funcionando perfectamente!');
 });
 
 app.listen(PORT, async () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   try {
     await sequelize.authenticate();
     console.log('Conexión a la base de datos establecida con éxito.');

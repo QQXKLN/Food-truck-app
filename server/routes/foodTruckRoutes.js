@@ -1,11 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const foodTruckController = require('../controllers/foodTruckController');
+const authenticate = require('../middlewares/authMiddleware');
 
-// Ruta para obtener todos los camiones (GET)
+
 router.get('/', foodTruckController.getAllFoodTrucks);
 
-// Ruta para crear un nuevo camión (POST)
-router.post('/', foodTruckController.createFoodTruck);
+
+router.post('/', authenticate, foodTruckController.createFoodTruck);
+router.put('/:id', authenticate, foodTruckController.updateFoodTruck);    
+router.delete('/:id', authenticate, foodTruckController.deleteFoodTruck);
 
 module.exports = router;
