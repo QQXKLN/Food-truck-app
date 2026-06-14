@@ -4,6 +4,7 @@ require('dotenv').config();
 const cors = require('cors');
 
 const foodTruckRoutes = require('./routes/foodTruckRoutes');
+const locationRoutes = require('./routes/locationRoutes');
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
@@ -14,6 +15,7 @@ app.use(cors({ origin: process.env.CORS_ORIGIN }));
 app.use(express.json());
 
 app.use('/api/v1/food-trucks', foodTruckRoutes);
+app.use('/api/v1/locations', locationRoutes);
 app.use('/api/v1/auth', authRoutes); 
 
 app.get('/', (req, res) => {

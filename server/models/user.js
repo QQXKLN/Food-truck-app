@@ -4,7 +4,8 @@ const bcrypt = require('bcrypt');
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
     static associate(models) {
-      
+    
+    User.hasMany(models.FoodTruck, { foreignKey: 'UserId' });
     }
   }
   User.init({
@@ -24,6 +25,10 @@ module.exports = (sequelize, DataTypes) => {
     role: {
       type: DataTypes.STRING,
       defaultValue: 'cliente' 
+    },
+    isAdmin: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
     }
   }, {
     sequelize,

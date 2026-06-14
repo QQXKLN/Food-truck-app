@@ -10,16 +10,22 @@ module.exports = {
         type: Sequelize.INTEGER
       },
       address: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false
       },
-      date: {
-        type: Sequelize.DATEONLY
+      schedule: {
+        type: Sequelize.STRING,
+        allowNull: false
       },
-      isActive: {
-        type: Sequelize.BOOLEAN
-      },
-      foodTruckId: {
-        type: Sequelize.INTEGER
+      FoodTruckId: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'FoodTrucks', // Enlaza con la tabla FoodTrucks
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE' // Si se borra el camión, se borran sus ubicaciones
       },
       createdAt: {
         allowNull: false,

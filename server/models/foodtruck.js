@@ -10,13 +10,13 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      
-      FoodTruck.hasMany(models.Location, {
-      foreignKey: 'foodTruckId',
-      as: 'locations'
-      });
-    }
+    // Un Food Truck pertenece a un solo Usuario
+    FoodTruck.belongsTo(models.User, { foreignKey: 'UserId' });
+    // Un Food Truck tiene muchas ubicaciones (NUEVO)
+    FoodTruck.hasMany(models.Location, { foreignKey: 'FoodTruckId', as: 'locations' });
   }
+  }
+
   FoodTruck.init({
     name: DataTypes.STRING,
     description: DataTypes.TEXT,
