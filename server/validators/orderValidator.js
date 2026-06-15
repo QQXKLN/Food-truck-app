@@ -18,7 +18,7 @@ const orderItemSchema = Joi.object({
 
 const createOrderSchema = Joi.object({
   items: Joi.array().items(orderItemSchema).min(1).required(),
-  total: Joi.number().positive().precision(2).required(),
+  total: Joi.number().positive().precision(2),
   paymentMethod: Joi.string().valid('Efectivo', 'Transferencia', 'Tarjeta').required()
 });
 

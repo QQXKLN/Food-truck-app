@@ -143,11 +143,17 @@ const getTruckOrders = async (req, res) => {
 
     const orders = await Order.findAll({
       where: { foodTruckId: req.params.id },
-      include: [{
-        model: OrderItem,
-        as: 'orderItems',
-        include: [Dish]
-      }],
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'name', 'email']
+        },
+        {
+          model: OrderItem,
+          as: 'orderItems',
+          include: [Dish]
+        }
+      ],
       order: [['createdAt', 'DESC']]
     });
 
