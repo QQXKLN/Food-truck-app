@@ -25,12 +25,12 @@
         
         <div class="grid">
           <div v-for="truck in trucks" :key="truck.id" class="card">
-            <img :src="truck.logo || 'https://via.placeholder.com/300x150?text=Food+Truck'" alt="Logo" class="card-img">
+            <img :src="truck.logo || 'https://placehold.co/300x150?text=Food+Truck'" alt="Logo" class="card-img">
             <div class="card-content">
               <h3>{{ truck.name }}</h3>
               <p class="desc">{{ truck.description }}</p>
               
-              <!-- 🌟 NUEVA SECCIÓN DE UBICACIONES PÚBLICAS -->
+              
               <div class="public-locations">
                 <h4>📍 Dónde encontrarnos:</h4>
                 <ul v-if="truck.locations && truck.locations.length > 0">

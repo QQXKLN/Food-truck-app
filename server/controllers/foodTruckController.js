@@ -14,12 +14,14 @@ const createFoodTruck = async (req, res) => {
 
 const getAllFoodTrucks = async (req, res) => {
   try {
-    
     const trucks = await FoodTruck.findAll({
       include: [{ model: Location, as: 'locations' }] 
     });
     res.status(200).json({ error: false, data: trucks });
   } catch (error) {
+   
+    console.log("❌ ERROR REAL EN EL BACKEND:", error); 
+    
     res.status(500).json({ error: true, message: 'Error al obtener el catálogo' });
   }
 };

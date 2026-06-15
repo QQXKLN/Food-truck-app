@@ -2,14 +2,15 @@ const { Location, FoodTruck } = require('../models');
 
 const addLocation = async (req, res) => {
   try {
-    const { address, schedule, FoodTruckId } = req.body;
+    const { address, schedule, FoodTruckId } = req.body; // El frontend lo manda con mayúscula
     const userId = req.user?.id || req.userId;
 
     const truck = await FoodTruck.findByPk(FoodTruckId);
     if (!truck) return res.status(404).json({ error: true, message: 'Food Truck no encontrado' });
     if (truck.UserId !== userId) return res.status(403).json({ error: true, message: 'Acceso denegado' });
 
-    const newLocation = await Location.create({ address, schedule, FoodTruckId });
+    
+    const newLocation = await Location.create({ address, schedule, foodTruckId: FoodTruckId });
     res.status(201).json({ error: false, message: 'Ubicación añadida', data: newLocation });
   } catch (error) {
     res.status(500).json({ error: true, message: 'Error al añadir ubicación', details: error.message });
@@ -19,13 +20,13 @@ const addLocation = async (req, res) => {
 const getTruckLocations = async (req, res) => {
   try {
     const { truckId } = req.params;
-    const locations = await Location.findAll({ where: { FoodTruckId: truckId } });
+    
+    const locations = await Location.findAll({ where: { foodTruckId: truckId } });
     res.status(200).json({ error: false, data: locations });
   } catch (error) {
     res.status(500).json({ error: true, message: 'Error al obtener ubicaciones' });
   }
 };
-
 
 const updateLocation = async (req, res) => {
   try {

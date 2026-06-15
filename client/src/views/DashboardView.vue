@@ -130,7 +130,7 @@ const createTruck = async () => { await axios.post(`${import.meta.env.VITE_API_U
 const updateTruck = async () => { await axios.put(`${import.meta.env.VITE_API_URL}/food-trucks/${editingId.value}`, formTruck.value, axiosConfig); fetchTrucks(); cancelEdit(); };
 const deleteTruck = async (id) => { if(confirm('¿Eliminar?')){ await axios.delete(`${import.meta.env.VITE_API_URL}/food-trucks/${id}`, axiosConfig); fetchTrucks(); }};
 
-// Funciones Ubicaciones
+
 const toggleLocations = async (truck) => {
   if (activeTruckId.value === truck.id) activeTruckId.value = null;
   else { activeTruckId.value = truck.id; await fetchLocations(truck.id); }
@@ -140,14 +140,31 @@ const fetchLocations = async (truckId) => {
   truckLocations.value = response.data.data;
 };
 const addLocation = async () => {
-  await axios.post(`${import.meta.env.VITE_API_URL}/locations`, { ...newLoc.value, FoodTruckId: activeTruckId.value }, axiosConfig);
-  newLoc.value = { address: '', schedule: '' }; fetchLocations(activeTruckId.value);
+  try {
+    // 1. Enviamos los datos al backend
+    await axios.post(`${import.meta.env.VITE_API_URL}/locations`, { 
+      address: newLoc.value.address,
+      schedule: newLoc.value.schedule,
+      FoodTruckId: activeTruckId.value 
+    }, axiosConfig);
+    
+    // 2. Limpiamos los inputs para que el usuario sepa que funcionó
+    newLoc.value = { address: '', schedule: '' }; 
+    
+    // 3. Volvemos a pedirle la lista de ubicaciones al servidor para que aparezca al instante
+    await fetchLocations(activeTruckId.value); 
+    
+  } catch (error) {
+    // Si algo falla, ahora sí nos avisará con una alerta roja
+    console.error("Error en el frontend al guardar:", error);
+    alert('Hubo un problema de conexión al guardar la ubicación.');
+  }
 };
 const deleteLocation = async (id) => {
   if (confirm('¿Eliminar ubicación?')) { await axios.delete(`${import.meta.env.VITE_API_URL}/locations/${id}`, axiosConfig); fetchLocations(activeTruckId.value); }
 };
 
-// Activar el modo de edición de una ubicación
+
 const startEditLocation = (loc) => {
   editingLocId.value = loc.id;
   editLocData.value = { address: loc.address, schedule: loc.schedule };
