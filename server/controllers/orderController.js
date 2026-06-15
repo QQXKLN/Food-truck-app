@@ -1,4 +1,4 @@
-const { Order, FoodTruck, Dish, OrderItem, User, DailyMenuItem, sequelize } = require('../models');
+const { Order, FoodTruck, Dish, OrderItem, User, DailyMenuItem, sequelize, Sequelize } = require('../models');
 const { getTodayDate, findActiveLocation } = require('../services/truckAvailabilityService');
 
 const canManageTruck = async (truck, userId) => {
@@ -130,6 +130,11 @@ const getTruckOrders = async (req, res) => {
 
     const orders = await Order.findAll({
       where: { foodTruckId: req.params.id },
+      include: [{
+        model: OrderItem,
+        as: 'orderItems',
+        include: [Dish]
+      }],
       order: [['createdAt', 'DESC']]
     });
 
@@ -161,7 +166,14 @@ const getMyPurchases = async (req, res) => {
   try {
     const orders = await Order.findAll({
       where: { userId: req.user.id },
-      include: [FoodTruck],
+      include: [
+        FoodTruck,
+        {
+          model: OrderItem,
+          as: 'orderItems',
+          include: [Dish]
+        }
+      ],
       order: [['createdAt', 'DESC']]
     });
 
@@ -171,9 +183,34 @@ const getMyPurchases = async (req, res) => {
   }
 };
 
+const getSalesRanking = async (req, res) => {
+  try {
+    const ranking = await Order.findAll({
+      attributes: [
+        'foodTruckId',
+        [Sequelize.fn('COUNT', Sequelize.col('Order.id')), 'ordersCount'],
+        [Sequelize.fn('COALESCE', Sequelize.fn('SUM', Sequelize.col('total')), 0), 'totalSales']
+      ],
+      where: { status: 'Entregado' },
+      include: [{
+        model: FoodTruck,
+        attributes: ['id', 'name', 'logo']
+      }],
+      group: ['Order.foodTruckId', 'FoodTruck.id'],
+      order: [[Sequelize.literal('"totalSales"'), 'DESC']],
+      limit: 10
+    });
+
+    res.status(200).json({ error: false, data: ranking });
+  } catch (error) {
+    res.status(500).json({ error: true, message: 'Error al obtener ranking de ventas' });
+  }
+};
+
 module.exports = {
   placeOrder,
   getTruckOrders,
   updateOrderStatus,
-  getMyPurchases
+  getMyPurchases,
+  getSalesRanking
 };

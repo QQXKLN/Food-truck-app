@@ -36,6 +36,22 @@
           <button @click="fetchAllTrucks" class="btn-refresh">Actualizar</button>
         </div>
 
+        <section v-if="salesRanking.length > 0" class="ranking-section">
+          <div class="section-heading compact">
+            <h2>Ranking de ventas</h2>
+            <span>Pedidos entregados</span>
+          </div>
+
+          <ol class="ranking-list">
+            <li v-for="(item, index) in salesRanking" :key="item.foodTruckId">
+              <span class="rank-number">#{{ index + 1 }}</span>
+              <strong>{{ item.FoodTruck?.name || 'Food Truck' }}</strong>
+              <span>${{ Number(item.totalSales || 0).toLocaleString() }} vendidos</span>
+              <small>{{ item.ordersCount }} pedido(s)</small>
+            </li>
+          </ol>
+        </section>
+
         <div v-if="trucks.length === 0" class="empty-state">
           No hay Food Trucks disponibles por ahora.
         </div>
@@ -93,6 +109,7 @@ import { useCartStore } from "../stores/cartStore";
 const router = useRouter();
 const cartStore = useCartStore();
 const trucks = ref([]);
+const salesRanking = ref([]);
 const isLoggedIn = ref(false);
 const userName = ref("Usuario");
 
@@ -132,6 +149,15 @@ const fetchAllTrucks = async () => {
   }
 };
 
+const fetchSalesRanking = async () => {
+  try {
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/food-trucks/ranking/sales`);
+    salesRanking.value = response.data.data;
+  } catch (error) {
+    salesRanking.value = [];
+  }
+};
+
 const goToCart = () => {
   if (cartStore.items.length === 0) {
     alert("Tu carrito esta vacio. Agrega algo desde un menu primero.");
@@ -158,6 +184,7 @@ onMounted(() => {
   checkAuth();
   resolveUserName();
   fetchAllTrucks();
+  fetchSalesRanking();
 });
 </script>
 
@@ -177,8 +204,15 @@ nav { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-co
 .hero p { margin: 10px 0 0; max-width: 620px; color: #64748b; font-size: 18px; }
 .catalog { padding: 34px 20px 48px; max-width: 1120px; margin: 0 auto; }
 .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 18px; }
+.section-heading.compact { margin-bottom: 12px; }
 .section-heading h2 { margin: 0; font-size: 26px; }
+.section-heading span { color: #64748b; font-weight: 800; font-size: 13px; }
 .btn-refresh { border: 0; border-radius: 6px; padding: 9px 12px; background: #e2e8f0; color: #1e293b; font-weight: 800; cursor: pointer; }
+.ranking-section { background: white; border: 1px solid #d9e2ec; border-radius: 8px; padding: 18px; margin-bottom: 22px; }
+.ranking-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.ranking-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; }
+.rank-number { background: #0f766e; color: white; border-radius: 999px; padding: 5px 9px; font-size: 12px; font-weight: 900; }
+.ranking-list small { color: #64748b; font-weight: 700; }
 .empty-state { text-align: center; padding: 34px; background: white; border: 1px dashed #cbd5e1; border-radius: 8px; color: #64748b; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 22px; }
 .card { background-color: white; border: 1px solid #d9e2ec; border-radius: 8px; overflow: hidden; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05); }
@@ -201,5 +235,7 @@ nav { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; justify-co
   .navbar { align-items: flex-start; flex-direction: column; gap: 12px; }
   nav { justify-content: flex-start; }
   .hero h1 { font-size: 34px; }
+  .ranking-list li { grid-template-columns: auto minmax(0, 1fr); }
+  .ranking-list li span:last-of-type, .ranking-list li small { grid-column: 2; }
 }
 </style>

@@ -2,133 +2,279 @@
   "info": {
     "_postman_id": "138661b7-faf3-4ab1-bdd9-cb4d98187707",
     "name": "Food-truck api",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "54704051",
-    "_collection_link": "https://go.postman.co/collection/54704051-138661b7-faf3-4ab1-bdd9-cb4d98187707?source=collection_link"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "token", "value": "" },
+    { "key": "truckId", "value": "1" },
+    { "key": "dishId", "value": "1" },
+    { "key": "locationId", "value": "1" },
+    { "key": "orderId", "value": "1" },
+    { "key": "resetToken", "value": "" }
+  ],
   "item": [
     {
-      "name": "Obtener food truck",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:3000/api/v1/food-trucks",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "v1",
-            "food-trucks"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "Crear",
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwicm9sZSI6ImNsaWVudGUiLCJpYXQiOjE3ODA4OTY1MjIsImV4cCI6MTc4MDk4MjkyMn0.jBg6-7rYQjO84O8QJ2SY7JeRQv91BFtXtg-Z7blZ7mc",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n    \"name\": \"El señor completo\",\r\n    \"description\": \"El mejor tocomple.\",\r\n    \"logo\": \"url_de_imagen_logo.jpg\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Registro",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Usuario Demo\",\n  \"email\": \"demo@correo.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
           }
         },
-        "url": {
-          "raw": "http://localhost:3000/api/v1/food-trucks",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "v1",
-            "food-trucks"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "Registro Usuario",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n  \"name\": \"Juan\",\r\n  \"email\": \"Juan@correo.com\",\r\n  \"password\": \"mi_password_123\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@correo.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
           }
         },
-        "url": {
-          "raw": "http://localhost:3000/api/v1/auth/register",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "v1",
-            "auth",
-            "register"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "Login Usuario",
-      "request": {
-        "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n  \"email\": \"diego@correo.com\",\r\n  \"password\": \"mi_password_secreto123\"\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
+        {
+          "name": "Solicitar reset password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@correo.com\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/forgot-password"
           }
         },
-        "url": {
-          "raw": "http://localhost:3000/api/v1/auth/login",
-          "protocol": "http",
-          "host": [
-            "localhost"
-          ],
-          "port": "3000",
-          "path": [
-            "api",
-            "v1",
-            "auth",
-            "login"
-          ]
+        {
+          "name": "Reset password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"nuevoPassword123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/reset-password"
+          }
         }
-      },
-      "response": []
+      ]
+    },
+    {
+      "name": "Food Trucks",
+      "item": [
+        {
+          "name": "Listar catalogo",
+          "request": { "method": "GET", "url": "{{baseUrl}}/food-trucks" }
+        },
+        {
+          "name": "Ranking ventas",
+          "request": { "method": "GET", "url": "{{baseUrl}}/food-trucks/ranking/sales" }
+        },
+        {
+          "name": "Mis trucks",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/food-trucks/me"
+          }
+        },
+        {
+          "name": "Obtener por id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/food-trucks/{{truckId}}" }
+        },
+        {
+          "name": "Crear truck",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"El Senor Completo\",\n  \"description\": \"Completos, churrascos y papas fritas.\",\n  \"logo\": \"https://placehold.co/420x220\"\n}"
+            },
+            "url": "{{baseUrl}}/food-trucks"
+          }
+        },
+        {
+          "name": "Actualizar truck",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"El Senor Completo\",\n  \"description\": \"Menu actualizado\",\n  \"logo\": \"https://placehold.co/420x220\"\n}"
+            },
+            "url": "{{baseUrl}}/food-trucks/{{truckId}}"
+          }
+        },
+        {
+          "name": "Eliminar truck",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/food-trucks/{{truckId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ubicaciones",
+      "item": [
+        {
+          "name": "Listar por truck",
+          "request": { "method": "GET", "url": "{{baseUrl}}/locations/truck/{{truckId}}" }
+        },
+        {
+          "name": "Crear ubicacion",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"foodTruckId\": {{truckId}},\n  \"address\": \"Plaza central\",\n  \"dayOfWeek\": 1,\n  \"startTime\": \"12:00\",\n  \"endTime\": \"18:00\",\n  \"isActive\": true\n}"
+            },
+            "url": "{{baseUrl}}/locations"
+          }
+        },
+        {
+          "name": "Actualizar ubicacion",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"Plaza central actualizada\",\n  \"dayOfWeek\": 1,\n  \"startTime\": \"12:30\",\n  \"endTime\": \"19:00\",\n  \"isActive\": true\n}"
+            },
+            "url": "{{baseUrl}}/locations/{{locationId}}"
+          }
+        },
+        {
+          "name": "Eliminar ubicacion",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/locations/{{locationId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Platos y menu diario",
+      "item": [
+        {
+          "name": "Listar platos por truck",
+          "request": { "method": "GET", "url": "{{baseUrl}}/dishes/truck/{{truckId}}" }
+        },
+        {
+          "name": "Crear plato",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"foodTruckId\": {{truckId}},\n  \"name\": \"Completo italiano\",\n  \"description\": \"Pan, vienesa, tomate, palta y mayo\",\n  \"price\": 2500,\n  \"isAvailable\": true\n}"
+            },
+            "url": "{{baseUrl}}/dishes"
+          }
+        },
+        {
+          "name": "Actualizar plato",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Completo italiano grande\",\n  \"description\": \"Con doble vienesa\",\n  \"price\": 3200,\n  \"isAvailable\": true\n}"
+            },
+            "url": "{{baseUrl}}/dishes/{{dishId}}"
+          }
+        },
+        {
+          "name": "Publicar stock diario",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dishId\": {{dishId}},\n  \"stock\": 20,\n  \"isAvailable\": true\n}"
+            },
+            "url": "{{baseUrl}}/food-trucks/{{truckId}}/daily-menu"
+          }
+        },
+        {
+          "name": "Obtener menu diario",
+          "request": { "method": "GET", "url": "{{baseUrl}}/food-trucks/{{truckId}}/daily-menu" }
+        },
+        {
+          "name": "Eliminar plato",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/dishes/{{dishId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pedidos",
+      "item": [
+        {
+          "name": "Crear pedido",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": {{dishId}}, \"quantity\": 1 }\n  ],\n  \"paymentMethod\": \"Efectivo\",\n  \"total\": 2500\n}"
+            },
+            "url": "{{baseUrl}}/food-trucks/{{truckId}}/order"
+          }
+        },
+        {
+          "name": "Pedidos del truck",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/food-trucks/{{truckId}}/orders"
+          }
+        },
+        {
+          "name": "Actualizar estado pedido",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Listo\"\n}"
+            },
+            "url": "{{baseUrl}}/food-trucks/orders/{{orderId}}/status"
+          }
+        },
+        {
+          "name": "Mis compras",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/food-trucks/mis-compras"
+          }
+        }
+      ]
     }
   ]
 }

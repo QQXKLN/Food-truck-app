@@ -1,39 +1,107 @@
-# Food-truck-app
-## Variables de Entorno
+# Food Truck App
 
-Para que el proyecto funcione correctamente, es necesario configurar variables de entorno tanto en el entorno local (desarrollo) como en producción (despliegue).
+Sistema universitario para gestionar food trucks, ubicaciones activas, menu diario, pedidos y ranking de ventas.
 
-### Local vs Producción
+## Estructura
 
-* **Entorno Local (Desarrollo):** En tu computadora, las variables del backend se configuran en un archivo llamado `.env` dentro de la carpeta `server/`, y las del frontend en otro `.env` dentro de `client/`. **Estos archivos `.env` no se suben al repositorio** (están en el `.gitignore`) por seguridad. En el repositorio solo se expone el archivo `.env.example` como plantilla.
-* **Entorno de Producción:** Al desplegar la aplicación (ej. en Railway, Vercel o Netlify), las variables no se suben mediante archivos. Se deben ingresar manualmente en la sección de "Environment Variables" o "Variables" del panel de control de cada plataforma de hosting.
+- `client/`: frontend Vue 3 + Vite + Pinia.
+- `server/`: API Node.js + Express + Sequelize + PostgreSQL.
+- `Food-truck api.postman_collection.json`: coleccion Postman para probar la API.
 
-### Tabla de Variables del Sistema
+## Variables de entorno
 
-| Variable | Servicio | Descripción |
-| :--- | :--- | :--- |
-| `DATABASE_URL` | API (Backend) | Connection string para la base de datos PostgreSQL (incluye credenciales y host). |
-| `PORT` | API (Backend) | Puerto donde escucha el servidor Express (ej. 3000). En Railway se inyecta automáticamente. |
-| `NODE_ENV` | API (Backend) | Define el entorno actual (`development` en local, `production` en el servidor). |
-| `JWT_SECRET` | API (Backend) | Clave secreta y segura utilizada para firmar y verificar los tokens de sesión. |
-| `CORS_ORIGIN` | API (Backend) | URL exacta del frontend permitida para consumir la API (ej. http://localhost:5173 o URL de Vercel). |
-| `VITE_API_URL` | Frontend | URL base de la API a la que el frontend enviará las peticiones HTTP. |
-
-### Ejemplo de archivo `.env.example` (Backend)
+Backend: crear `server/.env` usando `server/.env.example`.
 
 ```env
-# URL de conexión a la base de datos (PostgreSQL)
-# Formato: postgres://usuario:password@localhost:5432/nombre_bd
-DATABASE_URL=postgres://postgres:password_ejemplo@localhost:5432/food_truck_db
-
-# Puerto del servidor backend
+DATABASE_URL=postgres://usuario:password@localhost:5432/food_truck_db
 PORT=3000
-
-# Entorno de ejecución
 NODE_ENV=development
-
-# Clave secreta para firmar los tokens JWT
-JWT_SECRET=super_secreto_aleatorio_ejemplo
-
-# URL del frontend para permitir peticiones (CORS)
+JWT_SECRET=tu_clave_segura
 CORS_ORIGIN=http://localhost:5173
+APP_TIMEZONE=America/Santiago
+```
+
+Frontend: crear `client/.env` usando `client/.env.example`.
+
+```env
+VITE_API_URL=http://localhost:3000/api/v1
+```
+
+## Instalacion local
+
+```bash
+cd server
+npm install
+npm.cmd run migrate
+npm.cmd run dev
+```
+
+En otra terminal:
+
+```bash
+cd client
+npm install
+npm.cmd run dev -- --host 127.0.0.1 --port 5173
+```
+
+En PowerShell usa `npm.cmd` si `npm` aparece bloqueado por la politica de ejecucion de Windows.
+
+## Verificacion rapida
+
+```bash
+cd server
+npm.cmd run migrate:status
+node --check app.js
+```
+
+```bash
+cd client
+npm.cmd run build
+```
+
+Flujo manual recomendado:
+
+1. Registrar usuario e iniciar sesion.
+2. Crear un Food Truck desde `/dashboard`.
+3. Crear una ubicacion para el dia actual con horario vigente.
+4. Crear platos con descripcion.
+5. Publicar stock del dia para cada plato.
+6. Entrar al catalogo, abrir el menu y agregar platos al carrito.
+7. Confirmar pedido desde checkout.
+8. Gestionar pedidos desde el panel del truck.
+
+## Reglas implementadas
+
+- Registro con email unico y contrasena hasheada.
+- Login con JWT.
+- Rutas protegidas con middleware de autenticacion.
+- Validaciones Joi antes de Sequelize.
+- Migraciones versionadas; la app no usa `sequelize.sync`.
+- Ubicacion activa por dia y horario.
+- Menu diario por food truck.
+- Stock diario por plato.
+- Pedido transaccional con descuento de stock.
+- Historial de compras y gestion de estado de pedidos.
+- Ranking de ventas por food truck.
+- Restablecimiento de contrasena por token temporal.
+- Fecha y hora de operacion basadas en `APP_TIMEZONE` para evitar diferencias entre local y deploy.
+
+## Deploy
+
+API sugerida en Railway:
+
+1. Crear PostgreSQL en Railway.
+2. Configurar `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV=production`, `CORS_ORIGIN`.
+3. Ejecutar migraciones en el entorno de deploy.
+4. Exponer el puerto inyectado por Railway con `PORT`.
+
+Frontend sugerido en Vercel o Railway:
+
+1. Configurar `VITE_API_URL` con la URL publica de la API.
+2. Build command: `npm run build`.
+3. Output directory: `dist`.
+
+## Notas de seguridad
+
+- No subir archivos `.env`.
+- En produccion, el flujo de recuperacion de contrasena debe enviar el token por correo. En desarrollo, la API devuelve el token para poder probarlo en clase.

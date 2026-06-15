@@ -24,6 +24,7 @@ const canManageTruck = async (truck, userId) => {
 
 const decorateTruck = async (truck) => {
   const plainTruck = truck.toJSON();
+  plainTruck.today = getTodayDate();
   plainTruck.activeLocation = await findActiveLocation(truck.id);
   plainTruck.todayMenu = plainTruck.dailyMenuItems || [];
   return plainTruck;
@@ -151,7 +152,7 @@ const upsertDailyMenuItem = async (req, res) => {
     const foodTruckId = Number(req.params.id);
     const userId = req.user?.id || req.userId;
     const { dishId, stock, isAvailable = true } = req.body;
-    const date = req.body.date || getTodayDate();
+    const date = getTodayDate();
 
     const truck = await FoodTruck.findByPk(foodTruckId);
     if (!truck) return res.status(404).json({ error: true, message: 'Food Truck no encontrado' });

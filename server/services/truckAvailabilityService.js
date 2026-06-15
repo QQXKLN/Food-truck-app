@@ -1,13 +1,46 @@
 const { Location } = require('../models');
 
-const pad = (value) => String(value).padStart(2, '0');
+const APP_TIMEZONE = process.env.APP_TIMEZONE || 'America/Santiago';
+
+const getDateParts = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(date);
+
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+};
 
 const getTodayDate = (date = new Date()) => {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  const parts = getDateParts(date);
+  return `${parts.year}-${parts.month}-${parts.day}`;
 };
 
 const getCurrentTime = (date = new Date()) => {
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  const parts = getDateParts(date);
+  return `${parts.hour}:${parts.minute}:${parts.second}`;
+};
+
+const getCurrentDayOfWeek = (date = new Date()) => {
+  const weekday = getDateParts(date).weekday;
+  const values = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6
+  };
+
+  return values[weekday];
 };
 
 const toSeconds = (timeValue) => {
@@ -36,7 +69,7 @@ const isTimeInRange = (currentTime, startTime, endTime) => {
 };
 
 const findActiveLocation = async (foodTruckId, date = new Date()) => {
-  const dayOfWeek = date.getDay();
+  const dayOfWeek = getCurrentDayOfWeek(date);
   const currentTime = getCurrentTime(date);
 
   const locations = await Location.findAll({

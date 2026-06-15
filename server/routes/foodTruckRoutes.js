@@ -22,6 +22,7 @@ const {
 } = require('../validators/dailyMenuValidator');
 
 router.get('/mis-compras', authMiddleware, orderController.getMyPurchases);
+router.get('/ranking/sales', orderController.getSalesRanking);
 router.get('/me', authMiddleware, foodTruckController.getMyFoodTrucks);
 
 router.get('/', foodTruckController.getAllFoodTrucks);

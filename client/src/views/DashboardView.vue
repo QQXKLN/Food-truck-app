@@ -15,8 +15,11 @@
           <h1>Panel de administracion</h1>
           <p>Administra tus trucks, ubicaciones activas y menu disponible para hoy.</p>
         </div>
-        <button @click="fetchTrucks" class="btn-secondary">Actualizar</button>
+        <button type="button" @click="fetchTrucks" class="btn-secondary">Actualizar</button>
       </section>
+
+      <p v-if="successMessage" class="notice success">{{ successMessage }}</p>
+      <p v-if="errorMessage" class="notice error">{{ errorMessage }}</p>
 
       <div class="panel-grid">
         <section class="form-section">
@@ -63,10 +66,10 @@
                 </div>
 
                 <div class="truck-actions">
-                  <button @click="goToOrders(truck.id)" class="btn-secondary">Pedidos</button>
-                  <button @click="toggleActive(truck)" class="btn-secondary">Gestion</button>
-                  <button @click="startEdit(truck)" class="btn-secondary">Editar</button>
-                  <button @click="deleteTruck(truck.id)" class="btn-danger">Eliminar</button>
+                  <button type="button" @click="goToOrders(truck.id)" class="btn-secondary">Pedidos</button>
+                  <button type="button" @click="toggleActive(truck)" class="btn-secondary">Gestion</button>
+                  <button type="button" @click="startEdit(truck)" class="btn-secondary">Editar</button>
+                  <button type="button" @click="deleteTruck(truck.id)" class="btn-danger">Eliminar</button>
                 </div>
               </div>
 
@@ -84,8 +87,8 @@
                         <input v-model="editDishData.price" type="number" min="1" step="1" placeholder="Precio" />
                         <textarea v-model="editDishData.description" rows="2" placeholder="Descripcion o ingredientes"></textarea>
                         <div class="inline-actions">
-                          <button @click="saveEditDish(dish.id)" class="btn-primary">Guardar</button>
-                          <button @click="cancelEditDish" class="btn-secondary">Cancelar</button>
+                          <button type="button" @click="saveEditDish(dish.id)" class="btn-primary">Guardar</button>
+                          <button type="button" @click="cancelEditDish" class="btn-secondary">Cancelar</button>
                         </div>
                       </div>
 
@@ -120,12 +123,19 @@
                             {{ dailyMenuLabel(truck, dish) }}
                           </span>
 
-                          <button @click="saveDailyMenuItem(truck, dish)" class="btn-primary">Publicar</button>
-                          <button @click="handleToggle(dish)" :class="['btn-secondary', !dish.isAvailable ? 'muted' : '']">
+                          <button
+                            type="button"
+                            @click="saveDailyMenuItem(truck, dish)"
+                            class="btn-primary"
+                            :disabled="isPublishingDailyItem(truck.id, dish.id)"
+                          >
+                            {{ isPublishingDailyItem(truck.id, dish.id) ? "Publicando..." : "Publicar" }}
+                          </button>
+                          <button type="button" @click="handleToggle(dish)" :class="['btn-secondary', !dish.isAvailable ? 'muted' : '']">
                             {{ dish.isAvailable ? "Pausar plato" : "Activar plato" }}
                           </button>
-                          <button @click="startEditDish(dish)" class="btn-secondary">Editar</button>
-                          <button @click="deleteDish(dish.id)" class="btn-danger">Eliminar</button>
+                          <button type="button" @click="startEditDish(dish)" class="btn-secondary">Editar</button>
+                          <button type="button" @click="deleteDish(dish.id)" class="btn-danger">Eliminar</button>
                         </div>
                       </div>
                     </li>
@@ -147,16 +157,34 @@
 
                   <ul class="location-list">
                     <li v-for="location in truck.locations" :key="location.id" class="location-row">
-                      <div>
+                      <div v-if="editingLocationId === location.id" class="location-edit">
+                        <input v-model="editLocationData.address" placeholder="Direccion o punto de referencia" />
+                        <select v-model.number="editLocationData.dayOfWeek">
+                          <option v-for="day in days" :key="day.value" :value="day.value">{{ day.label }}</option>
+                        </select>
+                        <input v-model="editLocationData.startTime" type="time" />
+                        <input v-model="editLocationData.endTime" type="time" />
+                        <label class="check-control">
+                          <input v-model="editLocationData.isActive" type="checkbox" />
+                          Activa
+                        </label>
+                        <div class="inline-actions">
+                          <button type="button" @click="saveEditLocation(location.id)" class="btn-primary">Guardar</button>
+                          <button type="button" @click="cancelEditLocation" class="btn-secondary">Cancelar</button>
+                        </div>
+                      </div>
+
+                      <div v-else>
                         <strong>{{ dayLabel(location.dayOfWeek) }}</strong>
                         <p>{{ location.address }}</p>
                         <span>{{ formatTime(location.startTime) }} - {{ formatTime(location.endTime) }}</span>
                       </div>
-                      <div class="location-actions">
+                      <div v-if="editingLocationId !== location.id" class="location-actions">
                         <span :class="['status-pill', location.isActive ? 'open' : 'closed']">
                           {{ location.isActive ? "Activa" : "Pausada" }}
                         </span>
-                        <button @click="deleteLocation(location.id)" class="btn-danger">Eliminar</button>
+                        <button type="button" @click="startEditLocation(location)" class="btn-secondary">Editar</button>
+                        <button type="button" @click="deleteLocation(location.id)" class="btn-danger">Eliminar</button>
                       </div>
                     </li>
                   </ul>
@@ -202,6 +230,11 @@ const editDishData = ref({ name: "", price: "", description: "" });
 const dailyStockDrafts = ref({});
 const dailyAvailabilityDrafts = ref({});
 const locationForms = ref({});
+const publishingDailyItems = ref({});
+const editingLocationId = ref(null);
+const editLocationData = ref({ address: "", dayOfWeek: 0, startTime: "12:00", endTime: "18:00", isActive: true });
+const successMessage = ref("");
+const errorMessage = ref("");
 
 const days = [
   { value: 0, label: "Domingo" },
@@ -213,27 +246,37 @@ const days = [
   { value: 6, label: "Sabado" }
 ];
 
-const today = (() => {
-  const date = new Date();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-})();
+const today = ref("");
 
 const axiosConfig = () => ({
   headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
 });
 
 const getErrorMessage = (error, fallback = "Ocurrio un error") => {
+  const details = error.response?.data?.details;
+  if (Array.isArray(details) && details.length > 0) {
+    return `${error.response?.data?.message || fallback}: ${details.map((detail) => detail.message).join(", ")}`;
+  }
   return error.response?.data?.message || fallback;
+};
+
+const showSuccess = (message) => {
+  successMessage.value = message;
+  errorMessage.value = "";
+};
+
+const showError = (message) => {
+  errorMessage.value = message;
+  successMessage.value = "";
 };
 
 const fetchTrucks = async () => {
   try {
     const res = await axios.get(`${import.meta.env.VITE_API_URL}/food-trucks/me`, axiosConfig());
     trucks.value = res.data.data;
+    today.value = trucks.value[0]?.today || "";
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo cargar el panel"));
+    showError(getErrorMessage(err, "No se pudo cargar el panel"));
   }
 };
 
@@ -243,7 +286,7 @@ const handleToggle = async (dish) => {
     await axios.put(`${import.meta.env.VITE_API_URL}/dishes/${dish.id}`, { isAvailable: newState }, axiosConfig());
     dish.isAvailable = newState;
   } catch (err) {
-    alert(getErrorMessage(err, "Error al actualizar plato"));
+    showError(getErrorMessage(err, "Error al actualizar plato"));
   }
 };
 
@@ -263,7 +306,7 @@ const saveEditDish = async (id) => {
     cancelEditDish();
     fetchTrucks();
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo actualizar el plato"));
+    showError(getErrorMessage(err, "No se pudo actualizar el plato"));
   }
 };
 
@@ -275,9 +318,10 @@ const addDish = async (truckId) => {
       axiosConfig()
     );
     newDish.value = { name: "", price: "", description: "" };
+    showSuccess("Plato creado. Ahora puedes publicarlo en el menu de hoy.");
     fetchTrucks();
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo crear el plato"));
+    showError(getErrorMessage(err, "No se pudo crear el plato"));
   }
 };
 
@@ -288,7 +332,7 @@ const deleteDish = async (id) => {
     await axios.delete(`${import.meta.env.VITE_API_URL}/dishes/${id}`, axiosConfig());
     fetchTrucks();
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo eliminar el plato"));
+    showError(getErrorMessage(err, "No se pudo eliminar el plato"));
   }
 };
 
@@ -318,34 +362,44 @@ const setDailyAvailability = (truckId, dishId, checked) => {
   dailyAvailabilityDrafts.value[stockKey(truckId, dishId)] = checked;
 };
 
+const isPublishingDailyItem = (truckId, dishId) => {
+  return Boolean(publishingDailyItems.value[stockKey(truckId, dishId)]);
+};
+
 const dailyMenuLabel = (truck, dish) => {
   const menuItem = getDailyMenuItem(truck, dish);
   if (!menuItem) return "No publicado hoy";
-  return `Stock actual: ${menuItem.stock}`;
+  return menuItem.isAvailable ? `Publicado: ${menuItem.stock} disponibles` : `Pausado: ${menuItem.stock} disponibles`;
 };
 
 const saveDailyMenuItem = async (truck, dish) => {
+  const key = stockKey(truck.id, dish.id);
+
   try {
     const stock = Number(getStockDraft(truck, dish));
     if (Number.isNaN(stock) || stock < 0) {
-      alert("El stock debe ser 0 o mayor");
+      showError("El stock debe ser 0 o mayor");
       return;
     }
+
+    publishingDailyItems.value[key] = true;
 
     await axios.post(
       `${import.meta.env.VITE_API_URL}/food-trucks/${truck.id}/daily-menu`,
       {
         dishId: dish.id,
-        date: today,
         stock,
         isAvailable: getDailyAvailability(truck, dish)
       },
       axiosConfig()
     );
 
-    fetchTrucks();
+    showSuccess(`${dish.name} publicado en el menu de hoy.`);
+    await fetchTrucks();
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo publicar el plato de hoy"));
+    showError(getErrorMessage(err, "No se pudo publicar el plato de hoy"));
+  } finally {
+    publishingDailyItems.value[key] = false;
   }
 };
 
@@ -386,9 +440,45 @@ const addLocation = async (truckId) => {
       endTime: "18:00",
       isActive: true
     };
+    showSuccess("Ubicacion anadida.");
     fetchTrucks();
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo anadir la ubicacion"));
+    showError(getErrorMessage(err, "No se pudo anadir la ubicacion"));
+  }
+};
+
+const startEditLocation = (location) => {
+  editingLocationId.value = location.id;
+  editLocationData.value = {
+    address: location.address || "",
+    dayOfWeek: Number(location.dayOfWeek ?? new Date().getDay()),
+    startTime: formatTime(location.startTime) === "--:--" ? "12:00" : formatTime(location.startTime),
+    endTime: formatTime(location.endTime) === "--:--" ? "18:00" : formatTime(location.endTime),
+    isActive: Boolean(location.isActive)
+  };
+};
+
+const cancelEditLocation = () => {
+  editingLocationId.value = null;
+  editLocationData.value = { address: "", dayOfWeek: 0, startTime: "12:00", endTime: "18:00", isActive: true };
+};
+
+const saveEditLocation = async (id) => {
+  try {
+    await axios.put(
+      `${import.meta.env.VITE_API_URL}/locations/${id}`,
+      {
+        ...editLocationData.value,
+        schedule: `${editLocationData.value.startTime} - ${editLocationData.value.endTime}`
+      },
+      axiosConfig()
+    );
+
+    cancelEditLocation();
+    showSuccess("Ubicacion actualizada.");
+    fetchTrucks();
+  } catch (err) {
+    showError(getErrorMessage(err, "No se pudo actualizar la ubicacion"));
   }
 };
 
@@ -397,9 +487,10 @@ const deleteLocation = async (id) => {
 
   try {
     await axios.delete(`${import.meta.env.VITE_API_URL}/locations/${id}`, axiosConfig());
+    showSuccess("Ubicacion eliminada.");
     fetchTrucks();
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo eliminar la ubicacion"));
+    showError(getErrorMessage(err, "No se pudo eliminar la ubicacion"));
   }
 };
 
@@ -410,20 +501,22 @@ const handleSubmit = async () => {
 const createTruck = async () => {
   try {
     await axios.post(`${import.meta.env.VITE_API_URL}/food-trucks`, formTruck.value, axiosConfig());
+    showSuccess("Food Truck creado.");
     fetchTrucks();
     cancelEdit();
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo crear el Food Truck"));
+    showError(getErrorMessage(err, "No se pudo crear el Food Truck"));
   }
 };
 
 const updateTruck = async () => {
   try {
     await axios.put(`${import.meta.env.VITE_API_URL}/food-trucks/${editingId.value}`, formTruck.value, axiosConfig());
+    showSuccess("Food Truck actualizado.");
     fetchTrucks();
     cancelEdit();
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo actualizar el Food Truck"));
+    showError(getErrorMessage(err, "No se pudo actualizar el Food Truck"));
   }
 };
 
@@ -432,9 +525,10 @@ const deleteTruck = async (id) => {
 
   try {
     await axios.delete(`${import.meta.env.VITE_API_URL}/food-trucks/${id}`, axiosConfig());
+    showSuccess("Food Truck eliminado.");
     fetchTrucks();
   } catch (err) {
-    alert(getErrorMessage(err, "No se pudo eliminar el Food Truck"));
+    showError(getErrorMessage(err, "No se pudo eliminar el Food Truck"));
   }
 };
 
@@ -490,11 +584,15 @@ input, textarea, select { width: 100%; box-sizing: border-box; border: 1px solid
 textarea { resize: vertical; }
 .form-actions, .inline-actions, .truck-actions, .dish-controls, .location-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 button { border: 0; border-radius: 6px; padding: 9px 12px; font-weight: 700; cursor: pointer; }
+button:disabled { opacity: 0.65; cursor: not-allowed; }
 .btn-primary { background: #0f766e; color: white; }
 .btn-secondary { background: #e2e8f0; color: #1e293b; }
 .btn-secondary.muted { background: #f1f5f9; color: #64748b; }
 .btn-danger { background: #fee2e2; color: #b91c1c; }
 .empty-state { color: #64748b; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 18px; text-align: center; }
+.notice { border-radius: 8px; padding: 12px 14px; margin: 0 0 16px; font-weight: 700; }
+.notice.success { color: #166534; background: #dcfce7; border: 1px solid #86efac; }
+.notice.error { color: #991b1b; background: #fee2e2; border: 1px solid #fecaca; }
 .truck-list, .dish-list, .location-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
 .truck-block { border: 1px solid #d9e2ec; border-radius: 8px; background: #ffffff; overflow: hidden; }
 .truck-item { display: flex; justify-content: space-between; gap: 14px; padding: 16px; }
@@ -524,12 +622,14 @@ button { border: 0; border-radius: 6px; padding: 9px 12px; font-weight: 700; cur
 .add-dish-form textarea, .add-dish-form button { grid-column: 1 / -1; }
 .location-form { grid-template-columns: minmax(0, 1.5fr) 130px 110px 110px auto; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; align-items: center; }
 .location-form button { grid-column: 1 / -1; }
+.location-edit { display: grid; grid-template-columns: minmax(0, 1.4fr) 130px 110px 110px auto; gap: 10px; width: 100%; align-items: center; }
+.location-edit .inline-actions { grid-column: 1 / -1; }
 
 @media (max-width: 900px) {
   .panel-grid { grid-template-columns: 1fr; }
   .truck-item, .dish-content, .location-row, .page-heading { flex-direction: column; }
   .dish-controls { justify-content: flex-start; max-width: none; }
-  .location-form, .add-dish-form, .edit-grid { grid-template-columns: 1fr; }
-  .location-form button, .add-dish-form textarea, .add-dish-form button, .edit-grid textarea, .edit-grid .inline-actions { grid-column: auto; }
+  .location-form, .add-dish-form, .edit-grid, .location-edit { grid-template-columns: 1fr; }
+  .location-form button, .add-dish-form textarea, .add-dish-form button, .edit-grid textarea, .edit-grid .inline-actions, .location-edit .inline-actions { grid-column: auto; }
 }
 </style>

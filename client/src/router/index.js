@@ -7,6 +7,8 @@ import MenuView from '../views/MenuView.vue';
 import CheckoutView from '../views/CheckoutView.vue';
 import TruckOrdersView from '../views/TruckOrdersView.vue';
 import MisComprasView from '../views/MisComprasView.vue'; 
+import ForgotPasswordView from '../views/ForgotPasswordView.vue';
+import ResetPasswordView from '../views/ResetPasswordView.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -14,9 +16,11 @@ const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     { path: '/login', name: 'login', component: LoginView },
     { path: '/register', name: 'register', component: RegisterView },
+    { path: '/forgot-password', name: 'forgot-password', component: ForgotPasswordView },
+    { path: '/reset-password', name: 'reset-password', component: ResetPasswordView },
     { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true } },
     { path: '/truck/:id', name: 'MenuView', component: MenuView },
-    { path: '/checkout/:id', name: 'CheckoutView', component: CheckoutView },
+    { path: '/checkout/:id', name: 'CheckoutView', component: CheckoutView, meta: { requiresAuth: true } },
     { path: '/truck-orders/:id', name: 'TruckOrdersView', component: TruckOrdersView, meta: { requiresAuth: true } },
     { path: '/mis-compras', name: 'MisCompras', component: MisComprasView, meta: { requiresAuth: true } } 
   ]
