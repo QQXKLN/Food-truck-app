@@ -22,10 +22,16 @@ const normalizeOrderItems = async (items, foodTruckId, transaction) => {
   const dishIds = [...quantitiesByDish.keys()];
   const dailyItems = await DailyMenuItem.findAll({
     where: { foodTruckId, date: today, dishId: dishIds },
-    include: [{ model: Dish, as: 'dish' }],
     transaction,
     lock: transaction.LOCK.UPDATE
   });
+
+  const dishes = await Dish.findAll({
+    where: { id: dishIds, foodTruckId },
+    transaction
+  });
+
+  const dishesById = new Map(dishes.map((dish) => [dish.id, dish]));
 
   if (dailyItems.length !== dishIds.length) {
     const error = new Error('Uno o mas platos no estan publicados en el menu de hoy');
@@ -35,25 +41,32 @@ const normalizeOrderItems = async (items, foodTruckId, transaction) => {
 
   return dailyItems.map((dailyItem) => {
     const quantity = quantitiesByDish.get(dailyItem.dishId);
+    const dish = dishesById.get(dailyItem.dishId);
 
-    if (!dailyItem.isAvailable || dailyItem.dish?.isAvailable === false) {
-      const error = new Error(`El plato ${dailyItem.dish?.name || dailyItem.dishId} no esta disponible hoy`);
+    if (!dish) {
+      const error = new Error('Uno o mas platos no pertenecen a este Food Truck');
+      error.status = 400;
+      throw error;
+    }
+
+    if (!dailyItem.isAvailable || dish.isAvailable === false) {
+      const error = new Error(`El plato ${dish.name} no esta disponible hoy`);
       error.status = 400;
       throw error;
     }
 
     if (dailyItem.stock < quantity) {
-      const error = new Error(`Stock insuficiente para ${dailyItem.dish.name}. Quedan ${dailyItem.stock}.`);
+      const error = new Error(`Stock insuficiente para ${dish.name}. Quedan ${dailyItem.stock}.`);
       error.status = 400;
       throw error;
     }
 
-    const price = Number(dailyItem.dish.price);
+    const price = Number(dish.price);
 
     return {
       dailyItem,
       dishId: dailyItem.dishId,
-      name: dailyItem.dish.name,
+      name: dish.name,
       price,
       quantity,
       subtotal: price * quantity
