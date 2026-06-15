@@ -35,7 +35,8 @@ const addLocation = async (req, res) => {
       isActive: req.body.isActive,
       latitude: req.body.latitude,
       longitude: req.body.longitude,
-      foodTruckId
+      foodTruckId,
+      FoodTruckId: foodTruckId
     });
 
     res.status(201).json({ error: false, message: 'Ubicacion anadida', data: newLocation });

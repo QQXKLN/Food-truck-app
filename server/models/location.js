@@ -21,7 +21,8 @@ module.exports = (sequelize, DataTypes) => {
     },
     latitude: DataTypes.DECIMAL(10, 7),
     longitude: DataTypes.DECIMAL(10, 7),
-    foodTruckId: DataTypes.INTEGER
+    foodTruckId: DataTypes.INTEGER,
+    FoodTruckId: DataTypes.INTEGER
   }, {
     sequelize,
     modelName: 'Location',
