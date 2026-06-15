@@ -7,6 +7,8 @@ const foodTruckRoutes = require('./routes/foodTruckRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const authRoutes = require('./routes/authRoutes');
 const dishRoutes = require('./routes/dishRoutes');
+const errorHandler = require('./middlewares/errorHandler');
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,12 +17,14 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: process.env.CORS_ORIGIN }));
+app.use(errorHandler);
 
 // Rutas
 app.use('/api/v1/dishes', dishRoutes);
 app.use('/api/v1/food-trucks', foodTruckRoutes);
 app.use('/api/v1/locations', locationRoutes);
 app.use('/api/v1/auth', authRoutes); 
+
 
 app.get('/', (req, res) => {
   res.send('¡Servidor del Food Truck funcionando perfectamente!');
