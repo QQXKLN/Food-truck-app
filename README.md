@@ -88,18 +88,61 @@ Flujo manual recomendado:
 
 ## Deploy
 
-API sugerida en Railway:
+El proyecto esta preparado para Railway usando dos servicios desde el mismo repositorio:
 
-1. Crear PostgreSQL en Railway.
-2. Configurar `DATABASE_URL`, `JWT_SECRET`, `NODE_ENV=production`, `CORS_ORIGIN`.
-3. Ejecutar migraciones en el entorno de deploy.
-4. Exponer el puerto inyectado por Railway con `PORT`.
+- `server/`: API Express.
+- `client/`: frontend Vue servido como sitio estatico con Caddy.
+- PostgreSQL: base de datos administrada por Railway.
 
-Frontend sugerido en Vercel o Railway:
+### Backend en Railway
 
-1. Configurar `VITE_API_URL` con la URL publica de la API.
-2. Build command: `npm run build`.
-3. Output directory: `dist`.
+1. Crear un proyecto en Railway desde el repositorio GitHub.
+2. Crear un servicio para el backend con `Root Directory` en `/server`.
+3. Configurar:
+   - Build command: automatico.
+   - Start command: `npm start`.
+   - Pre-deploy command: `npm run migrate`.
+4. Agregar una base de datos `PostgreSQL` al mismo proyecto.
+5. Configurar variables del servicio backend:
+
+```env
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+NODE_ENV=production
+JWT_SECRET=generar_una_clave_larga_y_segura
+CORS_ORIGIN=https://URL_PUBLICA_DEL_FRONTEND
+APP_TIMEZONE=America/Santiago
+```
+
+6. En `Settings > Networking`, generar un dominio publico para la API.
+7. Verificar que `https://URL_PUBLICA_API/` responda correctamente.
+
+### Frontend en Railway
+
+1. Crear otro servicio desde el mismo repositorio.
+2. Configurar `Root Directory` en `/client`.
+3. Railway detectara `client/Dockerfile` y servira el build de Vue con Caddy.
+4. Configurar variable:
+
+```env
+VITE_API_URL=https://URL_PUBLICA_API/api/v1
+```
+
+5. Redeployar el frontend despues de cambiar `VITE_API_URL`, porque Vite la inserta durante el build.
+6. Generar dominio publico en `Settings > Networking`.
+7. Volver al backend y actualizar `CORS_ORIGIN` con la URL publica final del frontend.
+8. Redeployar backend.
+
+### Verificacion en produccion
+
+1. Abrir el frontend publico.
+2. Registrar un usuario vendedor y crear un Food Truck.
+3. Crear una ubicacion activa para el dia y horario actual.
+4. Crear platos y publicar stock del dia.
+5. Registrar o iniciar sesion como cliente.
+6. Hacer un pedido.
+7. Revisar gestion de pedidos en vivo desde el panel del vendedor.
+8. Marcar el pedido como listo y entregado.
+9. Confirmar que el ranking de ventas se actualiza con pedidos entregados.
 
 ## Notas de seguridad
 
