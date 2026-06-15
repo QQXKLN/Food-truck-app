@@ -44,13 +44,30 @@ const loginUser = async () => {
       password: password.value
     });
 
-    // ¡EL PASO CLAVE! Guardamos el token en la memoria del navegador
-    localStorage.setItem('token', response.data.token);
+    // 🔍 PRUEBA TÉCNICA: Abre la consola (F12) al presionar Entrar para ver qué devuelve tu backend exactamente
+    console.log("Respuesta del servidor en Login:", response.data);
+
+    // 1. Extraer el token de forma segura
+    const token = response.data.token || response.data.data?.token;
+    if (token) {
+      localStorage.setItem('token', token);
+    }
+
+    // 2. Extracción inteligente del Objeto de Usuario
+    // Busca si viene en response.data.user, response.data.data.user o directo en la raíz
+    const userObj = response.data.user || response.data.data?.user || response.data.data || response.data;
     
-    // Redirigimos al Panel Principal (que crearemos a continuación)
+    // 3. Extraer el nombre real mapeando las variables comunes del backend (name, username, firstName)
+    const finalName = userObj?.name || userObj?.username || userObj?.firstName || 'Usuario';
+    
+    // Guardamos el nombre real resuelto
+    localStorage.setItem('userName', finalName);
+    
+    // Redirigimos al Home principal
     router.push('/');
 
   } catch (error) {
+    console.error("Error en la petición de Login:", error);
     errorMessage.value = error.response?.data?.message || 'Credenciales incorrectas';
   }
 };

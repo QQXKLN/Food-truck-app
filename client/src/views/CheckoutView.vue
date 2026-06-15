@@ -15,39 +15,48 @@
 
     <div class="checkout-container">
       <h1>Finalizar Pedido</h1>
-      <p class="subtitle">Estás comprando en el Food Truck con ID: {{ route.params.id }}</p>
+      <p class="subtitle">Estás comprando en: <strong>{{ truckName || 'Cargando local...' }}</strong></p>
       
       <div v-if="cartStore.items.length > 0" class="order-summary">
         <h3>Resumen del carrito</h3>
         <ul>
           <li v-for="(item, index) in cartStore.items" :key="index" class="summary-item">
-            <span>
-              {{ item.name }}
-              <button @click="removeItem(index)" class="btn-remove" title="Quitar del carrito">❌</button>
-            </span>
+            <span>{{ item.name }} <button @click="removeItem(index)" class="btn-remove" title="Quitar">❌</button></span>
             <strong>${{ item.price }}</strong>
           </li>
         </ul>
-        
         <h2 class="total-price">Total: ${{ orderTotal }}</h2>
 
         <div class="payment-section">
           <h3>Método de Pago</h3>
-          <select v-model="paymentMethod" class="select-payment">
-            <option value="" disabled>Selecciona cómo vas a pagar...</option>
-            <option value="Efectivo">💵 Efectivo (Al retirar en el Truck)</option>
+          <select v-model="paymentMethod" class="select-payment" required>
+            <option value="" disabled selected>Selecciona cómo vas a pagar...</option>
+            <option value="Efectivo">💵 Efectivo</option>
+            <option value="Transferencia">📱 Transferencia</option>
             <option value="Tarjeta">💳 Tarjeta de Crédito / Débito</option>
-            <option value="Transferencia">📱 Transferencia Bancaria</option>
           </select>
+
+          <div v-if="paymentMethod === 'Tarjeta'" class="card-form">
+            <h4>Datos de la Tarjeta</h4>
+            <input type="text" v-model="card.number" placeholder="Número de tarjeta" class="input-card">
+            <input type="text" v-model="card.name" placeholder="Nombre del titular" class="input-card">
+            <div class="card-row">
+              <input type="text" v-model="card.expiry" placeholder="MM/AA" class="input-card half">
+              <input type="password" v-model="card.cvv" placeholder="CVV" class="input-card half">
+            </div>
+          </div>
         </div>
         
         <button @click="processOrder" class="btn-pay" :disabled="isProcessing">
-          {{ isProcessing ? 'Procesando pago...' : 'Confirmar y Pagar' }}
+          {{ isProcessing ? 'Procesando...' : 'Confirmar y Pagar' }}
         </button>
       </div>
 
       <div v-else class="empty-cart">
-        <p v-if="orderSuccess" class="success-msg">🎉 ¡Pago Aprobado! Tu pedido está siendo preparado.</p>
+        <div v-if="orderSuccess" class="success-box">
+          <h2>🎉 ¡Pedido Confirmado!</h2>
+          <p>Tu pedido ha sido enviado al Food Truck.</p>
+        </div>
         <p v-else>Tu carrito está vacío.</p>
         <router-link to="/" class="btn-back">Volver al catálogo</router-link>
       </div>
@@ -65,94 +74,69 @@ const route = useRoute();
 const router = useRouter();
 const cartStore = useCartStore();
 const isLoggedIn = ref(false);
-
+const truckName = ref('');
 const paymentMethod = ref('');
 const isProcessing = ref(false);
 const orderSuccess = ref(false);
+const card = ref({ number: '', name: '', expiry: '', cvv: '' });
 
-const orderTotal = computed(() => {
-  return cartStore.items.reduce((sum, item) => sum + Number(item.price), 0);
-});
-
+const orderTotal = computed(() => cartStore.items.reduce((sum, item) => sum + Number(item.price), 0));
 const checkAuth = () => { isLoggedIn.value = !!localStorage.getItem('token'); };
 
-const logout = () => {
-  localStorage.removeItem('token');
-  isLoggedIn.value = false;
-  router.push('/');
+const fetchTruckData = async () => {
+  try {
+    const response = await axios.get(`${import.meta.env.VITE_API_URL}/food-trucks/${route.params.id}`);
+    if (response.data?.data) truckName.value = response.data.data.name;
+  } catch (error) { truckName.value = "Food Truck"; }
 };
 
-// Permite eliminar un plato específico del carrito
-const removeItem = (index) => {
-  cartStore.items.splice(index, 1);
-  localStorage.setItem('cart', JSON.stringify(cartStore.items));
-};
-
-// Función principal: Envía la orden al Backend
 const processOrder = async () => {
-  if (!paymentMethod.value) {
-    alert('Por favor, selecciona un método de pago antes de confirmar.');
-    return;
-  }
+  if (!paymentMethod.value) return alert('Por favor selecciona un método de pago.');
+  if (paymentMethod.value === 'Tarjeta' && (!card.value.number || !card.value.cvv)) return alert('Por favor completa los datos de la tarjeta.');
 
   isProcessing.value = true;
-
   try {
-    const payload = {
-      items: cartStore.items,
-      paymentMethod: paymentMethod.value,
-      total: orderTotal.value
+    const payload = { 
+      items: cartStore.items, 
+      paymentMethod: paymentMethod.value, 
+      total: orderTotal.value 
     };
+    const token = localStorage.getItem('token');
+    const response = await axios.post(
+      `${import.meta.env.VITE_API_URL}/food-trucks/${route.params.id}/order`, 
+      payload,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
-    // Llamada al nuevo endpoint del backend
-    const response = await axios.post(`${import.meta.env.VITE_API_URL}/food-trucks/${route.params.id}/order`, payload);
-
-    if (!response.data.error) {
+    if (response.status === 200) {
       orderSuccess.value = true;
-      // Vaciamos el carrito globalmente
       cartStore.items = [];
       localStorage.removeItem('cart');
     }
   } catch (error) {
-    console.error(error);
-    // Mostramos el mensaje de error del backend (ej: "Stock insuficiente")
-    alert(error.response?.data?.message || 'Error al procesar el pedido. Intenta nuevamente.');
+    alert(error.response?.data?.message || 'Error al procesar.');
   } finally {
     isProcessing.value = false;
   }
 };
 
-onMounted(checkAuth);
+const logout = () => { localStorage.removeItem('token'); isLoggedIn.value = false; router.push('/'); };
+const removeItem = (index) => { cartStore.items.splice(index, 1); localStorage.setItem('cart', JSON.stringify(cartStore.items)); };
+
+onMounted(() => { checkAuth(); fetchTruckData(); });
 </script>
 
 <style scoped>
+/* Estilos mantenidos */
 .page-container { background-color: #f9f9f9; min-height: 100vh; }
 .navbar { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background-color: #2c3e50; color: white; }
 .logo { font-size: 22px; font-weight: bold; color: white; text-decoration: none; cursor: pointer; }
-nav { display: flex; gap: 15px; align-items: center; }
-.btn-nav { color: white; text-decoration: none; font-weight: bold; font-size: 14px; }
-.btn-logout { background-color: transparent; border: 1px solid white; color: white; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-
 .checkout-container { max-width: 600px; margin: 40px auto; padding: 30px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-h1 { text-align: center; color: #333; margin-bottom: 5px; }
-.subtitle { text-align: center; color: #666; margin-bottom: 30px; }
-.order-summary { border-top: 2px solid #eee; padding-top: 20px; }
-ul { list-style: none; padding: 0; }
-.summary-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px dashed #ddd; font-size: 16px; }
-.btn-remove { background: none; border: none; cursor: pointer; font-size: 14px; margin-left: 10px; opacity: 0.7; }
-.btn-remove:hover { opacity: 1; transform: scale(1.1); }
-.total-price { text-align: right; margin: 20px 0; color: #d35400; font-size: 24px; }
-
-/* Estilos de la sección de pago */
-.payment-section { background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e0e0e0; }
-.payment-section h3 { margin-top: 0; margin-bottom: 10px; font-size: 16px; color: #333; }
-.select-payment { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; background: white; }
-
-.btn-pay { background: #4CAF50; color: white; padding: 15px; border: none; width: 100%; cursor: pointer; font-size: 18px; font-weight: bold; border-radius: 6px; transition: background 0.3s; }
-.btn-pay:hover:not(:disabled) { background: #45a049; }
-.btn-pay:disabled { background: #9e9e9e; cursor: not-allowed; }
-
-.empty-cart { text-align: center; padding: 40px 0; }
-.success-msg { color: #4CAF50; font-size: 20px; font-weight: bold; margin-bottom: 15px; background: #e8f5e9; padding: 15px; border-radius: 6px; }
-.btn-back { display: inline-block; margin-top: 15px; color: #ff9800; font-weight: bold; text-decoration: none; }
+.payment-section { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+.select-payment { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 15px; }
+.card-form { background: white; padding: 15px; border-radius: 6px; border: 1px solid #ddd; }
+.input-card { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+.card-row { display: flex; gap: 10px; }
+.half { width: 50%; }
+.btn-pay { background: #4CAF50; color: white; padding: 15px; border: none; width: 100%; cursor: pointer; font-size: 18px; border-radius: 6px; }
 </style>

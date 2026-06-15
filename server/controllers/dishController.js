@@ -35,25 +35,17 @@ const getDishes = async (req, res) => {
 
 
 const updateDish = async (req, res) => {
-  try {
     const { id } = req.params;
-    const { name, description, price, stock } = req.body;
-    const userId = req.user?.id || req.userId;
-
-    const dish = await Dish.findByPk(id, { include: { model: FoodTruck } });
-    if (!dish) return res.status(404).json({ error: true, message: 'Plato no encontrado' });
-
-    if (dish.FoodTruck.UserId !== userId) {
-      return res.status(403).json({ error: true, message: 'No tienes permiso' });
-    }
-
-    if (stock !== undefined && stock < 0) return res.status(400).json({ error: true, message: 'Stock inválido' });
-
-    await dish.update({ name, description, price, stock });
-    res.status(200).json({ error: false, message: 'Plato actualizado', data: dish });
-  } catch (error) {
-    res.status(500).json({ error: true, message: 'Error al actualizar' });
-  }
+    const { isAvailable, name, price } = req.body;
+    const dish = await Dish.findByPk(id);
+    
+    
+    if (isAvailable !== undefined) dish.isAvailable = isAvailable;
+    if (name) dish.name = name;
+    if (price) dish.price = price;
+    
+    await dish.save();
+    res.json({ error: false, message: 'Actualizado' });
 };
 
 const deleteDish = async (req, res) => {

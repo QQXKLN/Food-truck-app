@@ -5,6 +5,8 @@ import RegisterView from '../views/RegisterView.vue';
 import DashboardView from '../views/DashboardView.vue';
 import MenuView from '../views/MenuView.vue';
 import CheckoutView from '../views/CheckoutView.vue';
+import TruckOrdersView from '../views/TruckOrdersView.vue';
+import MisComprasView from '../views/MisComprasView.vue'; 
 
 const router = createRouter({
   history: createWebHistory(),
@@ -14,16 +16,16 @@ const router = createRouter({
     { path: '/register', name: 'register', component: RegisterView },
     { path: '/dashboard', name: 'dashboard', component: DashboardView, meta: { requiresAuth: true } },
     { path: '/truck/:id', name: 'MenuView', component: MenuView },
-    { path: '/checkout/:id', name: 'CheckoutView', component: CheckoutView }
+    { path: '/checkout/:id', name: 'CheckoutView', component: CheckoutView },
+    { path: '/truck-orders/:id', name: 'TruckOrdersView', component: TruckOrdersView, meta: { requiresAuth: true } },
+    { path: '/mis-compras', name: 'MisCompras', component: MisComprasView, meta: { requiresAuth: true } } 
   ]
 });
 
-
 router.beforeEach((to, from) => {
   const token = localStorage.getItem('token');
-  
   if (to.meta.requiresAuth && !token) {
-    return { name: 'login' }; 
+    return { name: 'login' };
   }
   return true;
 });
