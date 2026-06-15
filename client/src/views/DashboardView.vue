@@ -2,12 +2,17 @@
   <div class="dashboard-container">
     <header>
       <h2>⚙️ Panel de Administración</h2>
-      <nav><router-link to="/" class="btn-link">Ver Catálogo Público</router-link></nav>
+      <nav>
+        <router-link to="/" class="btn-link">Ver Catálogo Público</router-link>
+      </nav>
     </header>
 
     <div class="panel-grid">
+      <!-- Sección Izquierda: Formulario -->
       <section class="form-section">
-        <h3>{{ isEditing ? 'Editar Food Truck' : 'Crear Nuevo Food Truck' }}</h3>
+        <h3>
+          {{ isEditing ? "Editar Food Truck" : "Crear Nuevo Food Truck" }}
+        </h3>
         <form @submit.prevent="handleSubmit">
           <div class="form-group">
             <label>Nombre:</label>
@@ -22,18 +27,27 @@
             <input v-model="formTruck.logo" type="text" />
           </div>
           <div class="form-actions">
-            <button type="submit" :class="isEditing ? 'btn-actualizar' : 'btn-crear'">
-              {{ isEditing ? 'Actualizar Food Truck' : 'Guardar Food Truck' }}
+            <button
+              type="submit"
+              :class="isEditing ? 'btn-actualizar' : 'btn-crear'"
+            >
+              {{ isEditing ? "Actualizar Food Truck" : "Guardar Food Truck" }}
             </button>
-            <button v-if="isEditing" type="button" @click="cancelEdit" class="btn-cancelar">Cancelar</button>
+            <button
+              v-if="isEditing"
+              type="button"
+              @click="cancelEdit"
+              class="btn-cancelar"
+            >
+              Cancelar
+            </button>
           </div>
         </form>
-        <p v-if="message" class="feedback-msg">{{ message }}</p>
       </section>
 
+      <!-- Sección Derecha: Listado -->
       <section class="list-section">
         <h3>Mis Food Trucks</h3>
-        <div v-if="trucks.length === 0">No tienes camiones registrados.</div>
         <ul class="truck-list">
           <li v-for="truck in trucks" :key="truck.id" class="truck-block">
             <div class="truck-item">
@@ -42,45 +56,126 @@
                 <p>{{ truck.description }}</p>
               </div>
               <div class="truck-actions">
-                <button @click="toggleLocations(truck)" class="btn-ubica">📍 Ubicaciones</button>
-                <button @click="startEdit(truck)" class="btn-editar">Editar</button>
-                <button @click="deleteTruck(truck.id)" class="btn-borrar">Eliminar</button>
+                <button @click="toggleActive(truck)" class="btn-ubica">
+                  ⚙️ Gestión
+                </button>
+                <button @click="startEdit(truck)" class="btn-editar">
+                  Editar
+                </button>
+                <button @click="deleteTruck(truck.id)" class="btn-borrar">
+                  Eliminar
+                </button>
               </div>
             </div>
 
-            <!-- PANEL DE UBICACIONES -->
-            <div v-if="activeTruckId === truck.id" class="locations-panel">
-              <h4>Ubicaciones para {{ truck.name }}</h4>
-              <ul v-if="truckLocations.length > 0" class="loc-list">
-                <li v-for="loc in truckLocations" :key="loc.id" class="loc-item">
-                  
-                  <!-- MODO EDICIÓN -->
-                  <div v-if="editingLocId === loc.id" class="edit-loc-mode">
-                    <input v-model="editLocData.address" type="text" class="small-input" />
-                    <input v-model="editLocData.schedule" type="text" class="small-input" />
-                    <button @click="saveEditLocation(loc.id)" class="btn-sm btn-green">Guardar</button>
-                    <button @click="cancelEditLocation" class="btn-sm btn-gray">X</button>
-                  </div>
-                  
-                  <!-- MODO LECTURA -->
-                  <div v-else class="read-loc-mode">
+            <!-- PANEL DE GESTIÓN (Ubicaciones + Menú) -->
+            <div v-if="activeTruckId === truck.id" class="management-panel">
+              <!-- Ubicaciones -->
+              <div class="sub-panel">
+                <h4>📍 Ubicaciones</h4>
+                <ul class="loc-list">
+                  <li
+                    v-for="loc in truckLocations"
+                    :key="loc.id"
+                    class="loc-item"
+                  >
                     <span>🏠 {{ loc.address }} | 🕒 {{ loc.schedule }}</span>
-                    <div>
-                      <button @click="startEditLocation(loc)" class="btn-sm btn-blue">✏️</button>
-                      <button @click="deleteLocation(loc.id)" class="btn-sm btn-red">❌</button>
-                    </div>
-                  </div>
-                  
-                </li>
-              </ul>
-              <p v-else class="no-loc-txt">Sin direcciones registradas.</p>
+                    <button
+                      @click="deleteLocation(loc.id)"
+                      class="btn-sm btn-red"
+                    >
+                      ❌
+                    </button>
+                  </li>
+                </ul>
+                <form @submit.prevent="addLocation" class="loc-form">
+                  <input
+                    v-model="newLoc.address"
+                    placeholder="Dirección"
+                    required
+                  />
+                  <input
+                    v-model="newLoc.schedule"
+                    placeholder="Horario"
+                    required
+                  />
+                  <button type="submit" class="btn-add">
+                    Añadir Ubicación
+                  </button>
+                </form>
+              </div>
 
-              <form @submit.prevent="addLocation" class="loc-form">
-                <h5>+ Añadir Dirección</h5>
-                <input v-model="newLoc.address" type="text" placeholder="Ej: Av. Prat 123" required />
-                <input v-model="newLoc.schedule" type="text" placeholder="Ej: Lun-Vie 12:00-20:00" required />
-                <button type="submit" class="btn-add-loc">Guardar</button>
-              </form>
+              <!-- Menú (Dishes) -->
+              <div class="sub-panel">
+                <h4>🍽️ Menú</h4>
+                <ul class="loc-list">
+                  <li
+                    v-for="dish in truck.dishes"
+                    :key="dish.id"
+                    class="loc-item"
+                  >
+                    <!-- MODO EDICIÓN -->
+                    <div v-if="editingDishId === dish.id" class="edit-mode">
+                      <input v-model="editDishData.name" class="small-input" />
+                      <input
+                        v-model="editDishData.price"
+                        type="number"
+                        class="small-input"
+                      />
+                      <input
+                        v-model="editDishData.stock"
+                        type="number"
+                        class="small-input"
+                      />
+                      <button
+                        @click="saveEditDish(dish.id)"
+                        class="btn-sm btn-green"
+                      >
+                        💾
+                      </button>
+                    </div>
+
+                    <!-- MODO LECTURA -->
+                    <div v-else class="read-mode">
+                      <span
+                        >{{ dish.name }} - ${{ dish.price }} (Stock:
+                        {{ dish.stock }})</span
+                      >
+                      <div>
+                        <button
+                          @click="startEditDish(dish)"
+                          class="btn-sm btn-blue"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          @click="deleteDish(dish.id)"
+                          class="btn-sm btn-red"
+                        >
+                          ❌
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+
+                <form @submit.prevent="addDish(truck.id)" class="loc-form">
+                  <input v-model="newDish.name" placeholder="Nombre" required />
+                  <input
+                    v-model="newDish.price"
+                    type="number"
+                    placeholder="Precio"
+                    required
+                  />
+                  <input
+                    v-model="newDish.stock"
+                    type="number"
+                    placeholder="Stock"
+                    required
+                  />
+                  <button type="submit" class="btn-add">Añadir</button>
+                </form>
+              </div>
             </div>
           </li>
         </ul>
@@ -90,132 +185,226 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import axios from 'axios';
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from "vue";
+import axios from "axios";
+import { useRouter } from "vue-router";
 
 const router = useRouter();
 const trucks = ref([]);
-const message = ref('');
-const formTruck = ref({ name: '', description: '', logo: '' });
+const activeTruckId = ref(null);
+const truckLocations = ref([]);
+const newLoc = ref({ address: "", schedule: "" });
+const newDish = ref({ name: "", price: "", stock: "" });
+
+const formTruck = ref({ name: "", description: "", logo: "" });
 const isEditing = ref(false);
 const editingId = ref(null);
 
-const activeTruckId = ref(null);
-const truckLocations = ref([]);
-const newLoc = ref({ address: '', schedule: '' });
-
-// Variables para editar ubicaciones
-const editingLocId = ref(null);
-const editLocData = ref({ address: '', schedule: '' });
-
-const token = localStorage.getItem('token');
+const token = localStorage.getItem("token");
 const axiosConfig = { headers: { Authorization: `Bearer ${token}` } };
 
 const fetchTrucks = async () => {
   try {
-    const response = await axios.get(`${import.meta.env.VITE_API_URL}/food-trucks/me`, axiosConfig);
+    const response = await axios.get(
+      `${import.meta.env.VITE_API_URL}/food-trucks/me`,
+      axiosConfig,
+    );
     trucks.value = response.data.data;
-  } catch (error) { console.error(error); }
+  } catch (error) {
+    console.error(error);
+  }
 };
 
-onMounted(() => { if (!token) router.push('/login'); else fetchTrucks(); });
+const editingDishId = ref(null);
+const editDishData = ref({ name: "", price: "", stock: "" });
 
-// Funciones Food Trucks
-const startEdit = (truck) => { isEditing.value = true; editingId.value = truck.id; formTruck.value = { ...truck }; };
-const cancelEdit = () => { isEditing.value = false; editingId.value = null; formTruck.value = { name: '', description: '', logo: '' }; };
-const handleSubmit = async () => { isEditing.value ? await updateTruck() : await createTruck(); };
+const startEditDish = (dish) => {
+  editingDishId.value = dish.id;
+  editDishData.value = {
+    name: dish.name,
+    price: dish.price,
+    stock: dish.stock,
+  };
+};
 
-const createTruck = async () => { await axios.post(`${import.meta.env.VITE_API_URL}/food-trucks`, formTruck.value, axiosConfig); fetchTrucks(); cancelEdit(); };
-const updateTruck = async () => { await axios.put(`${import.meta.env.VITE_API_URL}/food-trucks/${editingId.value}`, formTruck.value, axiosConfig); fetchTrucks(); cancelEdit(); };
-const deleteTruck = async (id) => { if(confirm('¿Eliminar?')){ await axios.delete(`${import.meta.env.VITE_API_URL}/food-trucks/${id}`, axiosConfig); fetchTrucks(); }};
+const saveEditDish = async (dishId) => {
+  try {
+    await axios.put(
+      `${import.meta.env.VITE_API_URL}/dishes/${dishId}`,
+      editDishData.value,
+      axiosConfig,
+    );
+    editingDishId.value = null;
+    fetchTrucks(); // Recargamos para ver cambios
+  } catch (error) {
+    alert("Error al actualizar el plato");
+  }
+};
 
+onMounted(() => {
+  if (!token) router.push("/login");
+  else fetchTrucks();
+});
 
-const toggleLocations = async (truck) => {
+// Gestión Truck
+const handleSubmit = async () => {
+  isEditing.value ? await updateTruck() : await createTruck();
+};
+const createTruck = async () => {
+  await axios.post(
+    `${import.meta.env.VITE_API_URL}/food-trucks`,
+    formTruck.value,
+    axiosConfig,
+  );
+  fetchTrucks();
+  cancelEdit();
+};
+const updateTruck = async () => {
+  await axios.put(
+    `${import.meta.env.VITE_API_URL}/food-trucks/${editingId.value}`,
+    formTruck.value,
+    axiosConfig,
+  );
+  fetchTrucks();
+  cancelEdit();
+};
+const deleteTruck = async (id) => {
+  if (confirm("¿Eliminar?")) {
+    await axios.delete(
+      `${import.meta.env.VITE_API_URL}/food-trucks/${id}`,
+      axiosConfig,
+    );
+    fetchTrucks();
+  }
+};
+const startEdit = (truck) => {
+  isEditing.value = true;
+  editingId.value = truck.id;
+  formTruck.value = { ...truck };
+};
+const cancelEdit = () => {
+  isEditing.value = false;
+  editingId.value = null;
+  formTruck.value = { name: "", description: "", logo: "" };
+};
+
+// Gestión UI Panels
+const toggleActive = async (truck) => {
   if (activeTruckId.value === truck.id) activeTruckId.value = null;
-  else { activeTruckId.value = truck.id; await fetchLocations(truck.id); }
+  else {
+    activeTruckId.value = truck.id;
+    await fetchLocations(truck.id);
+  }
 };
+
+// Gestión Ubicaciones
 const fetchLocations = async (truckId) => {
-  const response = await axios.get(`${import.meta.env.VITE_API_URL}/locations/truck/${truckId}`);
+  const response = await axios.get(
+    `${import.meta.env.VITE_API_URL}/locations/truck/${truckId}`,
+  );
   truckLocations.value = response.data.data;
 };
 const addLocation = async () => {
-  try {
-    // 1. Enviamos los datos al backend
-    await axios.post(`${import.meta.env.VITE_API_URL}/locations`, { 
-      address: newLoc.value.address,
-      schedule: newLoc.value.schedule,
-      FoodTruckId: activeTruckId.value 
-    }, axiosConfig);
-    
-    // 2. Limpiamos los inputs para que el usuario sepa que funcionó
-    newLoc.value = { address: '', schedule: '' }; 
-    
-    // 3. Volvemos a pedirle la lista de ubicaciones al servidor para que aparezca al instante
-    await fetchLocations(activeTruckId.value); 
-    
-  } catch (error) {
-    // Si algo falla, ahora sí nos avisará con una alerta roja
-    console.error("Error en el frontend al guardar:", error);
-    alert('Hubo un problema de conexión al guardar la ubicación.');
-  }
+  await axios.post(
+    `${import.meta.env.VITE_API_URL}/locations`,
+    { ...newLoc.value, FoodTruckId: activeTruckId.value },
+    axiosConfig,
+  );
+  newLoc.value = { address: "", schedule: "" };
+  fetchLocations(activeTruckId.value);
 };
 const deleteLocation = async (id) => {
-  if (confirm('¿Eliminar ubicación?')) { await axios.delete(`${import.meta.env.VITE_API_URL}/locations/${id}`, axiosConfig); fetchLocations(activeTruckId.value); }
+  await axios.delete(
+    `${import.meta.env.VITE_API_URL}/locations/${id}`,
+    axiosConfig,
+  );
+  fetchLocations(activeTruckId.value);
 };
 
-
-const startEditLocation = (loc) => {
-  editingLocId.value = loc.id;
-  editLocData.value = { address: loc.address, schedule: loc.schedule };
-};
-// Cancelar edición
-const cancelEditLocation = () => { editingLocId.value = null; };
-// Guardar cambios en el backend
-const saveEditLocation = async (locId) => {
+// Gestión Platos
+const addDish = async (truckId) => {
   try {
-    await axios.put(`${import.meta.env.VITE_API_URL}/locations/${locId}`, editLocData.value, axiosConfig);
-    editingLocId.value = null;
-    await fetchLocations(activeTruckId.value);
-  } catch (error) { alert('Error al actualizar'); }
+    await axios.post(
+      `${import.meta.env.VITE_API_URL}/dishes`,
+      { ...newDish.value, foodTruckId: truckId },
+      axiosConfig,
+    );
+    newDish.value = { name: "", price: "", stock: "" };
+    fetchTrucks(); // Recargar todo
+  } catch (error) {
+    alert("Error al agregar plato");
+  }
+};
+const deleteDish = async (id) => {
+  await axios.delete(
+    `${import.meta.env.VITE_API_URL}/dishes/${id}`,
+    axiosConfig,
+  );
+  fetchTrucks();
 };
 </script>
 
 <style scoped>
-.dashboard-container { max-width: 1000px; margin: 20px auto; font-family: sans-serif; }
-header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px;}
-.panel-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 30px; }
-.form-group { margin-bottom: 15px; display: flex; flex-direction: column;}
-input, textarea { padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; }
-.form-actions { display: flex; gap: 10px; }
-.btn-crear { background-color: #4CAF50; color: white; padding: 10px; border: none; cursor: pointer; border-radius: 4px; flex: 1;}
-.btn-actualizar { background-color: #ff9800; color: white; padding: 10px; border: none; cursor: pointer; border-radius: 4px; flex: 1;}
-.btn-cancelar { background-color: #9e9e9e; color: white; padding: 10px; border: none; cursor: pointer; border-radius: 4px;}
-
-.truck-list { list-style: none; padding: 0; }
-.truck-block { border: 1px solid #ddd; margin-bottom: 15px; border-radius: 6px; background-color: #f9f9f9; padding: 10px;}
-.truck-item { display: flex; justify-content: space-between; align-items: center; }
-.truck-info { flex: 1; }
-.truck-actions { display: flex; gap: 5px; }
-
-.btn-ubica { background-color: #9c27b0; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;}
-.btn-editar { background-color: #2196F3; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;}
-.btn-borrar { background-color: #f44336; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px;}
-
-/* Panel Ubicaciones */
-.locations-panel { background-color: #fff; margin-top: 10px; padding: 15px; border-radius: 4px; border-left: 4px solid #9c27b0; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
-.loc-list { list-style: none; padding: 0; margin-bottom: 15px; }
-.loc-item { padding: 6px 0; border-bottom: 1px dashed #eee; font-size: 14px; }
-.read-loc-mode { display: flex; justify-content: space-between; align-items: center;}
-.edit-loc-mode { display: flex; gap: 5px; align-items: center;}
-.small-input { padding: 4px; font-size: 12px; flex: 1; margin: 0;}
-.btn-sm { border: none; border-radius: 3px; cursor: pointer; padding: 4px 8px; color: white;}
-.btn-blue { background-color: #2196F3; }
-.btn-red { background-color: #f44336; }
-.btn-green { background-color: #4CAF50; }
-.btn-gray { background-color: #9e9e9e; }
-
-.loc-form { border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; }
-.loc-form input { width: 95%; display: block; margin-bottom: 8px; font-size: 13px; padding: 6px; }
-.btn-add-loc { background-color: #009688; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;}
+.dashboard-container {
+  max-width: 1000px;
+  margin: 20px auto;
+  font-family: sans-serif;
+}
+.edit-mode { display: flex; gap: 5px; flex-grow: 1; }
+.read-mode { display: flex; justify-content: space-between; flex-grow: 1; align-items: center; }
+.small-input { width: 60px; padding: 2px; }
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 30px;
+}
+.truck-block {
+  border: 1px solid #ddd;
+  margin-bottom: 15px;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f9f9f9;
+}
+.management-panel {
+  background: #fff;
+  padding: 15px;
+  border: 1px solid #ddd;
+  margin-top: 10px;
+}
+.sub-panel {
+  margin-bottom: 20px;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+.loc-list {
+  list-style: none;
+  padding: 0;
+}
+.loc-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  font-size: 14px;
+}
+.loc-form {
+  display: flex;
+  gap: 5px;
+  margin-top: 10px;
+}
+.btn-add {
+  background: #009688;
+  color: white;
+  border: none;
+  padding: 5px;
+  cursor: pointer;
+}
+.btn-sm {
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.btn-red {
+  background: #f44336;
+  color: white;
+  border: none;
+}
 </style>

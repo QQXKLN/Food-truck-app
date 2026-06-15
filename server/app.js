@@ -6,11 +6,14 @@ const cors = require('cors');
 const foodTruckRoutes = require('./routes/foodTruckRoutes');
 const locationRoutes = require('./routes/locationRoutes');
 const authRoutes = require('./routes/authRoutes');
+const dishRoutes = require('./routes/dishRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: process.env.CORS_ORIGIN }));
+app.use('/api/v1/dishes', dishRoutes);
 
 app.use(express.json());
 

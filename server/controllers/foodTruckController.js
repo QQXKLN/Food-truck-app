@@ -1,4 +1,4 @@
-const { FoodTruck, User, Location } = require('../models');
+const { FoodTruck, User, Location, Dish } = require('../models');
 
 const createFoodTruck = async (req, res) => {
   try {
@@ -15,7 +15,10 @@ const createFoodTruck = async (req, res) => {
 const getAllFoodTrucks = async (req, res) => {
   try {
     const trucks = await FoodTruck.findAll({
-      include: [{ model: Location, as: 'locations' }] 
+      include: [
+        { model: Location, as: 'locations' },
+        { model: Dish, as: 'dishes' } 
+      ] 
     });
     res.status(200).json({ error: false, data: trucks });
   } catch (error) {
@@ -30,20 +33,29 @@ const getAllFoodTrucks = async (req, res) => {
 const getMyFoodTrucks = async (req, res) => {
   try {
     const userId = req.user?.id || req.userId;
-    const currentUser = await User.findByPk(userId); 
-    
+    const currentUser = await User.findByPk(userId);
     let myTrucks;
+
     
-    
+    const includeConfig = [
+      { model: Location, as: 'locations' },
+      { model: Dish, as: 'dishes' } 
+    ];
+
     if (currentUser && currentUser.isAdmin) {
-      myTrucks = await FoodTruck.findAll();
+      
+      myTrucks = await FoodTruck.findAll({ include: includeConfig });
     } else {
       
-      myTrucks = await FoodTruck.findAll({ where: { UserId: userId } });
+      myTrucks = await FoodTruck.findAll({ 
+        where: { UserId: userId },
+        include: includeConfig
+      });
     }
-    
+
     res.status(200).json({ error: false, data: myTrucks });
   } catch (error) {
+    console.error("Error en getMyFoodTrucks:", error);
     res.status(500).json({ error: true, message: 'Error al cargar el panel' });
   }
 };
@@ -92,11 +104,76 @@ const deleteFoodTruck = async (req, res) => {
     res.status(500).json({ error: true, message: 'Error al eliminar', details: error.message });
   }
 };
+const getFoodTruckById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+   
+    const truck = await FoodTruck.findByPk(id, {
+      include: [
+        { model: Location, as: 'locations' },
+        { model: Dish, as: 'dishes' }
+      ]
+    });
+
+    if (!truck) {
+      return res.status(404).json({ error: true, message: 'Food Truck no encontrado' });
+    }
+
+    res.status(200).json({ error: false, data: truck });
+  } catch (error) {
+    console.error("Error al obtener Food Truck:", error);
+    res.status(500).json({ error: true, message: 'Error interno del servidor' });
+  }
+};
+const placeOrder = async (req, res) => {
+  try {
+    const { id } = req.params; 
+    const { items, paymentMethod } = req.body;
+
+    
+    if (!paymentMethod) {
+      return res.status(400).json({ error: true, message: 'Método de pago requerido' });
+    }
+
+    
+    const quantities = {};
+    items.forEach(item => {
+      quantities[item.id] = (quantities[item.id] || 0) + 1;
+    });
+
+    
+    for (const dishId in quantities) {
+      const dish = await Dish.findByPk(dishId);
+      const quantityToBuy = quantities[dishId];
+
+      if (!dish) {
+         return res.status(404).json({ error: true, message: `Plato no encontrado` });
+      }
+      
+      if (dish.stock < quantityToBuy) {
+        return res.status(400).json({ error: true, message: `Stock insuficiente para: ${dish.name}. Solo quedan ${dish.stock}.` });
+      }
+
+      
+      dish.stock -= quantityToBuy;
+      await dish.save();
+    }
+
+    
+    res.status(200).json({ error: false, message: 'Pedido procesado y stock actualizado con éxito' });
+  } catch (error) {
+    console.error("Error al procesar pedido:", error);
+    res.status(500).json({ error: true, message: 'Error interno del servidor al procesar el pago' });
+  }
+};
 
 module.exports = {
-  createFoodTruck,
   getAllFoodTrucks,
   getMyFoodTrucks,
-  updateFoodTruck,  
-  deleteFoodTruck    
+  createFoodTruck,
+  updateFoodTruck,
+  deleteFoodTruck,
+  getFoodTruckById,
+  placeOrder
 };
