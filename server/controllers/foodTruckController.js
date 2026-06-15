@@ -1,9 +1,17 @@
-const { FoodTruck, User, Location, Dish } = require('../models');
+const { FoodTruck, User, Location, Dish, DailyMenuItem } = require('../models');
 const orderController = require('./orderController');
+const { getTodayDate, findActiveLocation } = require('../services/truckAvailabilityService');
 
-const includeTruckDetails = [
+const getTruckIncludeDetails = (date = getTodayDate()) => [
   { model: Location, as: 'locations' },
-  { model: Dish, as: 'dishes' }
+  { model: Dish, as: 'dishes' },
+  {
+    model: DailyMenuItem,
+    as: 'dailyMenuItems',
+    required: false,
+    where: { date },
+    include: [{ model: Dish, as: 'dish' }]
+  }
 ];
 
 const canManageTruck = async (truck, userId) => {
@@ -12,6 +20,13 @@ const canManageTruck = async (truck, userId) => {
 
   const currentUser = await User.findByPk(userId);
   return Boolean(currentUser?.isAdmin);
+};
+
+const decorateTruck = async (truck) => {
+  const plainTruck = truck.toJSON();
+  plainTruck.activeLocation = await findActiveLocation(truck.id);
+  plainTruck.todayMenu = plainTruck.dailyMenuItems || [];
+  return plainTruck;
 };
 
 const createFoodTruck = async (req, res) => {
@@ -28,8 +43,10 @@ const createFoodTruck = async (req, res) => {
 
 const getAllFoodTrucks = async (req, res) => {
   try {
-    const trucks = await FoodTruck.findAll({ include: includeTruckDetails });
-    res.status(200).json({ error: false, data: trucks });
+    const trucks = await FoodTruck.findAll({ include: getTruckIncludeDetails() });
+    const data = await Promise.all(trucks.map(decorateTruck));
+
+    res.status(200).json({ error: false, data });
   } catch (error) {
     res.status(500).json({ error: true, message: 'Error al obtener el catalogo' });
   }
@@ -40,11 +57,12 @@ const getMyFoodTrucks = async (req, res) => {
     const userId = req.user?.id || req.userId;
     const currentUser = await User.findByPk(userId);
 
-    const myTrucks = currentUser?.isAdmin
-      ? await FoodTruck.findAll({ include: includeTruckDetails })
-      : await FoodTruck.findAll({ where: { UserId: userId }, include: includeTruckDetails });
+    const trucks = currentUser?.isAdmin
+      ? await FoodTruck.findAll({ include: getTruckIncludeDetails() })
+      : await FoodTruck.findAll({ where: { UserId: userId }, include: getTruckIncludeDetails() });
 
-    res.status(200).json({ error: false, data: myTrucks });
+    const data = await Promise.all(trucks.map(decorateTruck));
+    res.status(200).json({ error: false, data });
   } catch (error) {
     res.status(500).json({ error: true, message: 'Error al cargar el panel' });
   }
@@ -99,12 +117,63 @@ const getFoodTruckById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const truck = await FoodTruck.findByPk(id, { include: includeTruckDetails });
+    const truck = await FoodTruck.findByPk(id, { include: getTruckIncludeDetails() });
     if (!truck) return res.status(404).json({ error: true, message: 'Food Truck no encontrado' });
 
-    res.status(200).json({ error: false, data: truck });
+    res.status(200).json({ error: false, data: await decorateTruck(truck) });
   } catch (error) {
     res.status(500).json({ error: true, message: 'Error interno del servidor' });
+  }
+};
+
+const getDailyMenu = async (req, res) => {
+  try {
+    const foodTruckId = Number(req.params.id);
+    const date = req.query.date || getTodayDate();
+
+    const truck = await FoodTruck.findByPk(foodTruckId);
+    if (!truck) return res.status(404).json({ error: true, message: 'Food Truck no encontrado' });
+
+    const items = await DailyMenuItem.findAll({
+      where: { foodTruckId, date },
+      include: [{ model: Dish, as: 'dish' }],
+      order: [[{ model: Dish, as: 'dish' }, 'name', 'ASC']]
+    });
+
+    res.status(200).json({ error: false, data: items });
+  } catch (error) {
+    res.status(500).json({ error: true, message: 'Error al obtener menu diario' });
+  }
+};
+
+const upsertDailyMenuItem = async (req, res) => {
+  try {
+    const foodTruckId = Number(req.params.id);
+    const userId = req.user?.id || req.userId;
+    const { dishId, stock, isAvailable = true } = req.body;
+    const date = req.body.date || getTodayDate();
+
+    const truck = await FoodTruck.findByPk(foodTruckId);
+    if (!truck) return res.status(404).json({ error: true, message: 'Food Truck no encontrado' });
+
+    if (!(await canManageTruck(truck, userId))) {
+      return res.status(403).json({ error: true, message: 'Acceso denegado' });
+    }
+
+    const dish = await Dish.findOne({ where: { id: dishId, foodTruckId } });
+    if (!dish) return res.status(404).json({ error: true, message: 'Plato no encontrado para este Food Truck' });
+
+    const [menuItem] = await DailyMenuItem.findOrCreate({
+      where: { foodTruckId, dishId, date },
+      defaults: { stock, isAvailable }
+    });
+
+    await menuItem.update({ stock, isAvailable });
+    const savedItem = await DailyMenuItem.findByPk(menuItem.id, { include: [{ model: Dish, as: 'dish' }] });
+
+    res.status(200).json({ error: false, message: 'Menu diario actualizado', data: savedItem });
+  } catch (error) {
+    res.status(500).json({ error: true, message: 'Error al actualizar menu diario', details: error.message });
   }
 };
 
@@ -119,5 +188,7 @@ module.exports = {
   updateFoodTruck,
   deleteFoodTruck,
   getFoodTruckById,
+  getDailyMenu,
+  upsertDailyMenuItem,
   placeOrder
 };

@@ -8,9 +8,14 @@ const canManageTruck = async (truck, userId) => {
   return Boolean(currentUser?.isAdmin);
 };
 
+const buildSchedule = ({ startTime, endTime, schedule }) => {
+  if (schedule) return schedule;
+  if (startTime && endTime) return `${startTime} - ${endTime}`;
+  return 'Horario por confirmar';
+};
+
 const addLocation = async (req, res) => {
   try {
-    const { address, schedule } = req.body;
     const foodTruckId = req.body.foodTruckId || req.body.FoodTruckId;
     const userId = req.user?.id || req.userId;
 
@@ -21,7 +26,18 @@ const addLocation = async (req, res) => {
       return res.status(403).json({ error: true, message: 'Acceso denegado' });
     }
 
-    const newLocation = await Location.create({ address, schedule, foodTruckId });
+    const newLocation = await Location.create({
+      address: req.body.address,
+      schedule: buildSchedule(req.body),
+      dayOfWeek: req.body.dayOfWeek,
+      startTime: req.body.startTime,
+      endTime: req.body.endTime,
+      isActive: req.body.isActive,
+      latitude: req.body.latitude,
+      longitude: req.body.longitude,
+      foodTruckId
+    });
+
     res.status(201).json({ error: false, message: 'Ubicacion anadida', data: newLocation });
   } catch (error) {
     res.status(500).json({ error: true, message: 'Error al anadir ubicacion', details: error.message });
@@ -31,7 +47,11 @@ const addLocation = async (req, res) => {
 const getTruckLocations = async (req, res) => {
   try {
     const { truckId } = req.params;
-    const locations = await Location.findAll({ where: { foodTruckId: truckId } });
+    const locations = await Location.findAll({
+      where: { foodTruckId: truckId },
+      order: [['dayOfWeek', 'ASC'], ['startTime', 'ASC']]
+    });
+
     res.status(200).json({ error: false, data: locations });
   } catch (error) {
     res.status(500).json({ error: true, message: 'Error al obtener ubicaciones' });
@@ -50,12 +70,20 @@ const updateLocation = async (req, res) => {
       return res.status(403).json({ error: true, message: 'No tienes permiso para editar esta ubicacion' });
     }
 
-    const allowedFields = ['address', 'schedule'];
+    const allowedFields = ['address', 'dayOfWeek', 'startTime', 'endTime', 'isActive', 'latitude', 'longitude'];
     const updates = {};
 
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
+
+    if (req.body.schedule !== undefined || req.body.startTime !== undefined || req.body.endTime !== undefined) {
+      updates.schedule = buildSchedule({
+        schedule: req.body.schedule,
+        startTime: req.body.startTime || location.startTime,
+        endTime: req.body.endTime || location.endTime
+      });
+    }
 
     await location.update(updates);
     res.status(200).json({ error: false, message: 'Ubicacion actualizada', data: location });

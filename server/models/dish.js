@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       // define association here
       Dish.belongsTo(models.FoodTruck, { foreignKey: 'foodTruckId' });
       Dish.hasMany(models.OrderItem, { foreignKey: 'dishId' });
+      Dish.hasMany(models.DailyMenuItem, { foreignKey: 'dishId', as: 'dailyMenuItems' });
     }
   }
   

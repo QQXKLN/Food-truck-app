@@ -15,11 +15,29 @@ const {
   createOrderSchema,
   updateOrderStatusSchema
 } = require('../validators/orderValidator');
+const {
+  dailyMenuParamSchema,
+  dailyMenuQuerySchema,
+  upsertDailyMenuItemSchema
+} = require('../validators/dailyMenuValidator');
 
 router.get('/mis-compras', authMiddleware, orderController.getMyPurchases);
 router.get('/me', authMiddleware, foodTruckController.getMyFoodTrucks);
 
 router.get('/', foodTruckController.getAllFoodTrucks);
+router.get(
+  '/:id/daily-menu',
+  validateRequest(dailyMenuParamSchema, 'params'),
+  validateRequest(dailyMenuQuerySchema, 'query'),
+  foodTruckController.getDailyMenu
+);
+router.post(
+  '/:id/daily-menu',
+  authMiddleware,
+  validateRequest(dailyMenuParamSchema, 'params'),
+  validateRequest(upsertDailyMenuItemSchema),
+  foodTruckController.upsertDailyMenuItem
+);
 router.get('/:id', validateRequest(idParamSchema, 'params'), foodTruckController.getFoodTruckById);
 
 router.post('/', authMiddleware, validateRequest(createFoodTruckSchema), foodTruckController.createFoodTruck);

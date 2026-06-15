@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
       FoodTruck.hasMany(models.Location, { foreignKey: 'foodTruckId', as: 'locations' });
       FoodTruck.hasMany(models.Dish, { foreignKey: 'foodTruckId', as: 'dishes' });
       FoodTruck.hasMany(models.Order, { foreignKey: 'foodTruckId' });
+      FoodTruck.hasMany(models.DailyMenuItem, { foreignKey: 'foodTruckId', as: 'dailyMenuItems' });
     }
   }
   

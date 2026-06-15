@@ -1,4 +1,5 @@
-const { Order, FoodTruck, Dish, OrderItem, User, sequelize } = require('../models');
+const { Order, FoodTruck, Dish, OrderItem, User, DailyMenuItem, sequelize } = require('../models');
+const { getTodayDate, findActiveLocation } = require('../services/truckAvailabilityService');
 
 const canManageTruck = async (truck, userId) => {
   if (!truck || !userId) return false;
@@ -8,8 +9,9 @@ const canManageTruck = async (truck, userId) => {
   return Boolean(currentUser?.isAdmin);
 };
 
-const normalizeOrderItems = async (items, foodTruckId) => {
+const normalizeOrderItems = async (items, foodTruckId, transaction) => {
   const quantitiesByDish = new Map();
+  const today = getTodayDate();
 
   items.forEach((item) => {
     const dishId = Number(item.id);
@@ -18,28 +20,40 @@ const normalizeOrderItems = async (items, foodTruckId) => {
   });
 
   const dishIds = [...quantitiesByDish.keys()];
-  const dishes = await Dish.findAll({ where: { id: dishIds, foodTruckId } });
+  const dailyItems = await DailyMenuItem.findAll({
+    where: { foodTruckId, date: today, dishId: dishIds },
+    include: [{ model: Dish, as: 'dish' }],
+    transaction,
+    lock: transaction.LOCK.UPDATE
+  });
 
-  if (dishes.length !== dishIds.length) {
-    const error = new Error('Uno o mas platos no pertenecen al Food Truck seleccionado');
+  if (dailyItems.length !== dishIds.length) {
+    const error = new Error('Uno o mas platos no estan publicados en el menu de hoy');
     error.status = 400;
     throw error;
   }
 
-  const unavailableDish = dishes.find((dish) => dish.isAvailable === false);
-  if (unavailableDish) {
-    const error = new Error(`El plato ${unavailableDish.name} no esta disponible`);
-    error.status = 400;
-    throw error;
-  }
+  return dailyItems.map((dailyItem) => {
+    const quantity = quantitiesByDish.get(dailyItem.dishId);
 
-  return dishes.map((dish) => {
-    const quantity = quantitiesByDish.get(dish.id);
-    const price = Number(dish.price);
+    if (!dailyItem.isAvailable || dailyItem.dish?.isAvailable === false) {
+      const error = new Error(`El plato ${dailyItem.dish?.name || dailyItem.dishId} no esta disponible hoy`);
+      error.status = 400;
+      throw error;
+    }
+
+    if (dailyItem.stock < quantity) {
+      const error = new Error(`Stock insuficiente para ${dailyItem.dish.name}. Quedan ${dailyItem.stock}.`);
+      error.status = 400;
+      throw error;
+    }
+
+    const price = Number(dailyItem.dish.price);
 
     return {
-      dishId: dish.id,
-      name: dish.name,
+      dailyItem,
+      dishId: dailyItem.dishId,
+      name: dailyItem.dish.name,
       price,
       quantity,
       subtotal: price * quantity
@@ -56,17 +70,31 @@ const placeOrder = async (req, res) => {
     const truck = await FoodTruck.findByPk(foodTruckId);
     if (!truck) return res.status(404).json({ error: true, message: 'Food Truck no encontrado' });
 
-    const orderItems = await normalizeOrderItems(items, foodTruckId);
-    const total = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+    const activeLocation = await findActiveLocation(foodTruckId);
+    if (!activeLocation) {
+      return res.status(400).json({
+        error: true,
+        message: 'Este Food Truck no tiene una ubicacion activa para este dia y horario'
+      });
+    }
 
     const newOrder = await sequelize.transaction(async (transaction) => {
+      const orderItems = await normalizeOrderItems(items, foodTruckId, transaction);
+      const total = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+
+      orderItems.forEach((item) => {
+        item.dailyItem.stock -= item.quantity;
+      });
+
+      await Promise.all(orderItems.map((item) => item.dailyItem.save({ transaction })));
+
       const order = await Order.create({
         foodTruckId,
         userId: req.user.id,
         total,
         paymentMethod,
         status: 'Pendiente',
-        items: JSON.stringify(orderItems)
+        items: JSON.stringify(orderItems.map(({ dailyItem, ...item }) => item))
       }, { transaction });
 
       await OrderItem.bulkCreate(orderItems.map((item) => ({
@@ -76,14 +104,14 @@ const placeOrder = async (req, res) => {
         price: item.price
       })), { transaction });
 
-      return order;
+      return { order, total };
     });
 
     res.status(200).json({
       error: false,
       message: 'Pedido recibido',
-      orderId: newOrder.id,
-      total
+      orderId: newOrder.order.id,
+      total: newOrder.total
     });
   } catch (error) {
     const status = error.status || 500;
