@@ -1,11 +1,22 @@
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.addColumn('Orders', 'userId', {
-      type: Sequelize.INTEGER,
-      allowNull: true
-    });
+    const table = await queryInterface.describeTable('Orders');
+
+    if (!table.userId) {
+      await queryInterface.addColumn('Orders', 'userId', {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        references: {
+          model: 'Users',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'SET NULL'
+      });
+    }
   },
-  down: async (queryInterface, Sequelize) => {
-    await queryInterface.removeColumn('Orders', 'userId');
+
+  down: async () => {
+    // No-op: userId is part of the current Orders schema and may contain production data.
   }
 };

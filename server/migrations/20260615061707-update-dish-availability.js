@@ -1,14 +1,19 @@
+'use strict';
+
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-   
-    await queryInterface.removeColumn('Dishes', 'stock');
-    await queryInterface.addColumn('Dishes', 'isAvailable', {
-      type: Sequelize.BOOLEAN,
-      defaultValue: true
-    });
+    const table = await queryInterface.describeTable('Dishes');
+
+    if (!table.isAvailable) {
+      await queryInterface.addColumn('Dishes', 'isAvailable', {
+        type: Sequelize.BOOLEAN,
+        defaultValue: true,
+        allowNull: false
+      });
+    }
   },
-  down: async (queryInterface, Sequelize) => {
-    await queryInterface.addColumn('Dishes', 'stock', { type: Sequelize.INTEGER });
-    await queryInterface.removeColumn('Dishes', 'isAvailable');
+
+  down: async () => {
+    // No-op: preserving existing stock and availability data is safer than dropping columns.
   }
 };

@@ -1,27 +1,29 @@
-const { Dish, FoodTruck } = require('../models');
+const { Dish, FoodTruck, User } = require('../models');
 
-// Crear un nuevo plato
+const canManageTruck = async (truck, userId) => {
+  if (!truck || !userId) return false;
+  if (truck.UserId === userId) return true;
+
+  const currentUser = await User.findByPk(userId);
+  return Boolean(currentUser?.isAdmin);
+};
+
 const createDish = async (req, res) => {
   try {
-    const { name, description, price, stock, foodTruckId } = req.body;
+    const { name, description, price, foodTruckId, isAvailable = true } = req.body;
     const userId = req.user?.id || req.userId;
 
-    
     const truck = await FoodTruck.findByPk(foodTruckId);
-    if (!truck || truck.UserId !== userId) {
+    if (!(await canManageTruck(truck, userId))) {
       return res.status(403).json({ error: true, message: 'No tienes permiso sobre este Food Truck' });
     }
 
-    
-    if (stock < 0) return res.status(400).json({ error: true, message: 'El stock no puede ser negativo' });
-
-    const newDish = await Dish.create({ name, description, price, stock, foodTruckId });
-    res.status(201).json({ error: false, message: 'Plato creado con éxito', data: newDish });
+    const newDish = await Dish.create({ name, description, price, isAvailable, foodTruckId });
+    res.status(201).json({ error: false, message: 'Plato creado con exito', data: newDish });
   } catch (error) {
     res.status(500).json({ error: true, message: 'Error al crear plato', details: error.message });
   }
 };
-
 
 const getDishes = async (req, res) => {
   try {
@@ -33,19 +35,30 @@ const getDishes = async (req, res) => {
   }
 };
 
-
 const updateDish = async (req, res) => {
+  try {
     const { id } = req.params;
-    const { isAvailable, name, price } = req.body;
-    const dish = await Dish.findByPk(id);
-    
-    
-    if (isAvailable !== undefined) dish.isAvailable = isAvailable;
-    if (name) dish.name = name;
-    if (price) dish.price = price;
-    
-    await dish.save();
-    res.json({ error: false, message: 'Actualizado' });
+    const userId = req.user?.id || req.userId;
+
+    const dish = await Dish.findByPk(id, { include: { model: FoodTruck } });
+    if (!dish) return res.status(404).json({ error: true, message: 'Plato no encontrado' });
+
+    if (!(await canManageTruck(dish.FoodTruck, userId))) {
+      return res.status(403).json({ error: true, message: 'No tienes permiso' });
+    }
+
+    const allowedFields = ['name', 'description', 'price', 'isAvailable'];
+    const updates = {};
+
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    });
+
+    await dish.update(updates);
+    res.status(200).json({ error: false, message: 'Plato actualizado', data: dish });
+  } catch (error) {
+    res.status(500).json({ error: true, message: 'Error al actualizar plato', details: error.message });
+  }
 };
 
 const deleteDish = async (req, res) => {
@@ -56,12 +69,14 @@ const deleteDish = async (req, res) => {
     const dish = await Dish.findByPk(id, { include: { model: FoodTruck } });
     if (!dish) return res.status(404).json({ error: true, message: 'Plato no encontrado' });
 
-    if (dish.FoodTruck.UserId !== userId) return res.status(403).json({ error: true, message: 'No tienes permiso' });
+    if (!(await canManageTruck(dish.FoodTruck, userId))) {
+      return res.status(403).json({ error: true, message: 'No tienes permiso' });
+    }
 
     await dish.destroy();
     res.status(200).json({ error: false, message: 'Plato eliminado' });
   } catch (error) {
-    res.status(500).json({ error: true, message: 'Error al eliminar' });
+    res.status(500).json({ error: true, message: 'Error al eliminar plato', details: error.message });
   }
 };
 
