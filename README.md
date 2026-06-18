@@ -111,6 +111,7 @@ NODE_ENV=production
 JWT_SECRET=generar_una_clave_larga_y_segura
 CORS_ORIGIN=https://URL_PUBLICA_DEL_FRONTEND
 APP_TIMEZONE=America/Santiago
+EXPOSE_RESET_TOKEN=false
 ```
 
 6. En `Settings > Networking`, generar un dominio publico para la API.
@@ -148,3 +149,4 @@ VITE_API_URL=https://URL_PUBLICA_API/api/v1
 
 - No subir archivos `.env`.
 - En produccion, el flujo de recuperacion de contrasena debe enviar el token por correo. En desarrollo, la API devuelve el token para poder probarlo en clase.
+- Para una demostracion controlada se puede configurar `EXPOSE_RESET_TOKEN=true` en el backend. Debe volver a `false` despues de presentar, porque exponer el token permite restablecer la contrasena de cualquier correo registrado.

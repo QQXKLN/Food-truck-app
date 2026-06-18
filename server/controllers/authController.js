@@ -88,7 +88,10 @@ const requestPasswordReset = async (req, res) => {
       message: 'Solicitud de recuperacion generada.'
     };
 
-    if (process.env.NODE_ENV !== 'production') {
+    const exposeResetToken = process.env.NODE_ENV !== 'production'
+      || process.env.EXPOSE_RESET_TOKEN?.toLowerCase() === 'true';
+
+    if (exposeResetToken) {
       response.data = { resetToken };
     }
 
